@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/files/inter-latin-wght-normal.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/files/inter-latin-ext-wght-normal.woff2') format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+    :root { --bg:#F1F5F9; --surface:#fff; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --accent:#2563EB; --ok:#10B981; --warn:#d97706; --prod:#6366f1; --exp:#0ea5e9; --ent:#14b8a6; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: 'Inter', sans-serif; }
+    .wrap { max-width:980px; margin:0 auto; padding:20px 16px 60px; }
+    .brand { font-size:13px; font-weight:800; letter-spacing:1px; color:var(--muted); text-transform:uppercase; margin-bottom:14px; } .brand span { color:var(--accent); }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; margin-bottom:16px; }
+    h2 { font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:0 0 14px; }
+    .titulo { font-size:24px; font-weight:800; } .sub { color:var(--muted); font-size:14px; margin-top:2px; }
+    .barras { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:18px; margin-top:18px; }
+    .barra-rot { display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:6px; }
+    .trilho { height:12px; background:#e8eef6; border-radius:6px; overflow:hidden; } .trilho > div { height:100%; border-radius:6px; transition:width .6s; }
+    .grade { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; }
+    .num { border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center; } .num b { display:block; font-size:28px; font-weight:800; } .num span { font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); }
+    .fases { display:grid; grid-template-columns:repeat(8, 1fr); gap:6px; align-items:end; height:120px; margin-top:6px; }
+    .fase { text-align:center; font-size:10px; color:var(--muted); display:flex; flex-direction:column; justify-content:flex-end; height:100%; }
+    .fase .coluna { background:var(--accent); border-radius:6px 6px 0 0; min-height:2px; margin-bottom:4px; } .fase b { color:var(--text); font-size:12px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; } th, td { text-align:left; padding:9px 6px; border-bottom:1px solid var(--border); } th { font-size:11px; text-transform:uppercase; color:var(--muted); letter-spacing:.4px; }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; } .chip { padding:6px 12px; border-radius:999px; border:1px solid var(--border); font-size:12px; cursor:pointer; background:#fff; } .chip.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .pecas { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; max-height:340px; overflow:auto; }
+    .peca { border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-size:13px; } .peca small { display:block; font-size:11px; font-weight:700; margin-top:2px; }
+    .s-Em { color:var(--warn); } .s-Produzida { color:var(--prod); } .s-Expedida { color:var(--exp); } .s-Entregue { color:var(--ent); } .s-Montada { color:var(--ok); }
+    .entrega { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:14px; } .entrega:last-child { border:none; } .ponto { width:10px; height:10px; border-radius:50%; margin-top:5px; flex:none; }
+    .reg { border-bottom:1px solid var(--border); padding:14px 0; } .reg:last-child { border:none; } .reg .t { font-size:12px; color:var(--muted); font-weight:600; margin-bottom:6px; } .reg .p { white-space:pre-wrap; font-size:15px; line-height:1.45; }
+    .fotos { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:8px; margin-top:10px; } .fotos img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; cursor:zoom-in; }
+    #zoom { position:fixed; inset:0; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; z-index:50; } #zoom img { max-width:96vw; max-height:92vh; border-radius:8px; }
+    .msg { text-align:center; color:var(--muted); padding:60px 0; } .msg.err { color:#dc2626; } .atualizado { font-size:11px; color:var(--muted); text-align:right; }
+    @media (max-width:560px) { .fases { gap:3px; } .fase { font-size:8px; } }
+  
+    /* O sistema ocupa a tela inteira: esconde a barra e o rodapé do site que o ERPNext coloca em volta das páginas. */
+    body > .navbar, header.navbar, nav.navbar, .web-footer, footer.web-footer, .page-header, .page-breadcrumbs { display: none !important; }
+    .page_content, .page-content-wrapper, main.container, .container.my-4 { margin: 0 !important; padding: 0 !important; max-width: none !important; }
+    body { margin: 0 !important; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><img src="/files/precast_logo.png" alt="" style="height:26px;width:26px;vertical-align:middle;margin-right:8px">ERP <span>PRECAST</span> — Acompanhamento da Obra</div>
+  <div id="conteudo"><div class="msg">Carregando...</div></div>
+  <div class="atualizado" id="atualizado"></div>
+</div>
+<div id="zoom" onclick="this.style.display='none'"><img id="zoomImg" alt="Foto da obra"></div>
+
+<script>
+  const API_BASE = window.location.origin;
+  const param = n => new URLSearchParams(window.location.search).get(n);
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const dataBr = d => d ? d.slice(0, 10).split('-').reverse().join('/') : '—';
+  let dados = null, filtro = 'Todas';
+
+  async function carregar() {
+    const obra = param('obra'), token = param('t'), alvo = document.getElementById('conteudo');
+    if (!obra || !token) { alvo.innerHTML = '<div class="msg err">Use o link completo enviado pela empresa.</div>'; return; }
+    try {
+      const r = await fetch(`${API_BASE}/api/method/frappe.precast_api.get_status_publico_obra?codigo_obra=${encodeURIComponent(obra)}&t=${encodeURIComponent(token)}`);
+      const j = await r.json(); const d = j.message || {};
+      if (!d.success) { alvo.innerHTML = `<div class="msg err">${esc(d.error || 'Link inválido ou expirado.')}</div>`; return; }
+      dados = d; desenhar();
+      document.getElementById('atualizado').textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) { if (!dados) alvo.innerHTML = '<div class="msg err">Não foi possível carregar agora. Tente de novo em instantes.</div>'; }
+  }
+
+  const barra = (rot, pct, cor, extra) => `<div><div class="barra-rot"><span>${rot}</span><span>${pct}%${extra ? ' · ' + extra : ''}</span></div><div class="trilho"><div style="width:${pct}%; background:${cor};"></div></div></div>`;
+
+  function desenhar() {
+    const d = dados, sec = d.secoes || {}, c = d.contagem, maxFase = Math.max(1, ...(d.fases || []).map(f => f.pecas));
+    const lista = (d.pecas || []).filter(p => filtro === 'Todas' || p.situacao === filtro);
+    const pesos = sec.pesos && d.peso_t;
+    const bloco = (ligado, html) => ligado ? html : '';
+    document.getElementById('conteudo').innerHTML = `
+      <div class="card">
+        <div class="titulo">${esc(d.obra.nome || d.obra.codigo)}</div>
+        <div class="sub">${esc(d.obra.codigo)}${d.obra.cidade_uf ? ' · ' + esc(d.obra.cidade_uf) : ''} · ${d.total_pecas} peças</div>
+        ${d.mensagem ? `<div class="p" style="margin-top:10px; color:var(--muted);">${esc(d.mensagem)}</div>` : ''}
+        ${bloco(sec.progresso, `<div class="barras">
+          ${barra('Produzido', d.percentual_produzido, 'var(--prod)', pesos ? `${d.peso_t.produzido} de ${d.peso_t.total} t` : '')}
+          ${barra('Montado na obra', d.percentual_montado, 'var(--ok)', pesos ? `${d.peso_t.montado} t` : '')}
+        </div>`)}
+      </div>
+      ${bloco(sec.situacao || sec.etapas, `<div class="card">
+        ${bloco(sec.situacao, `<h2>Situação das peças</h2>
+        <div class="grade">
+          <div class="num"><b style="color:var(--warn)">${c['Em produção']}</b><span>Em produção</span></div>
+          <div class="num"><b style="color:var(--prod)">${c['Produzida']}</b><span>Produzidas</span></div>
+          <div class="num"><b style="color:var(--exp)">${c['Expedida']}</b><span>Em transporte</span></div>
+          <div class="num"><b style="color:var(--ent)">${c['Entregue']}</b><span>Entregues na obra</span></div>
+          <div class="num"><b style="color:var(--ok)">${c['Montada']}</b><span>Montadas</span></div>
+        </div>`)}
+        ${bloco(sec.etapas, `<h2 style="margin-top:${sec.situacao ? 22 : 0}px;">Peças em cada etapa da fábrica</h2>
+        <div class="fases">${(d.fases || []).map(f => `<div class="fase"><b>${f.pecas}</b><div class="coluna" style="height:${Math.round(f.pecas / maxFase * 80)}px"></div>${esc(f.etapa)}</div>`).join('')}</div>`)}
+      </div>`)}
+      ${bloco(sec.numeros, `<div class="card"><h2>Números da obra</h2>
+        <div class="grade">
+          ${pesos && d.volume_m3 ? `<div class="num"><b>${d.volume_m3.produzido}</b><span>m³ produzidos de ${d.volume_m3.total}</span></div>
+          <div class="num"><b>${d.peso_t.produzido}</b><span>toneladas produzidas</span></div>` : ''}
+          ${d.entregas ? `<div class="num"><b>${d.entregas.filter(e => e.status === 'Entregue').length}</b><span>entregas realizadas</span></div>` : ''}
+          ${d.diario ? `<div class="num"><b>${d.diario.length}</b><span>registros no diário</span></div>` : ''}
+        </div>
+      </div>`)}
+      ${d.por_produto && d.por_produto.length ? `<div class="card"><h2>Por tipo de peça</h2><table><thead><tr><th>Tipo</th><th>Total</th><th>Produzidas</th><th>Montadas</th></tr></thead><tbody>
+        ${d.por_produto.map(p => `<tr><td>${esc(p.produto)}</td><td>${p.total}</td><td>${p.produzidas}</td><td>${p.montadas}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${bloco(d.pecas, `<div class="card"><h2>Peças</h2>
+        <div class="chips">${['Todas', 'Em produção', 'Produzida', 'Expedida', 'Entregue', 'Montada'].map(f => `<span class="chip ${f === filtro ? 'on' : ''}" onclick="filtro='${f}'; desenhar();">${f}</span>`).join('')}</div>
+        <div class="pecas">${lista.map(p => `<div class="peca">${esc(p.tag)}<small class="s-${esc(p.situacao.split(' ')[0])}">${esc(p.situacao)}${p.situacao === 'Em produção' ? ' · ' + esc(p.etapa) : ''}</small></div>`).join('') || '<div class="msg">Nenhuma peça nesta situação.</div>'}</div>
+      </div>`)}
+      ${bloco(d.entregas, `<div class="card"><h2>Entregas</h2>
+        ${(d.entregas || []).map(e => `<div class="entrega"><div class="ponto" style="background:${e.status === 'Entregue' ? 'var(--ent)' : 'var(--exp)'}"></div><div><b>${esc(e.status === 'Entregue' ? 'Entregue' : e.status === 'Despachado' ? 'A caminho' : 'Em preparação')}</b> · ${esc(e.codigo)} · ${e.peso_t} t<br>
+          <span style="color:var(--muted); font-size:12px;">Saída ${dataBr(e.data_expedicao)}${e.status === 'Entregue' ? ' · entregue em ' + dataBr(e.data_entrega) + (e.recebedor ? ' · recebido por ' + esc(e.recebedor) : '') : ''}</span></div></div>`).join('')
+          || '<div class="msg" style="padding:20px">Nenhuma entrega registrada ainda.</div>'}
+      </div>`)}
+      ${bloco(d.diario, `<div class="card"><h2>Diário de obra</h2>
+        ${(d.diario || []).map(r => `<div class="reg"><div class="t">${dataBr(r.data)}${r.clima ? ' · ' + esc(r.clima) : ''}</div>
+          ${r.resumo ? `<div class="p">${esc(r.resumo)}</div>` : ''}
+          ${r.fotos.length ? `<div class="fotos">${r.fotos.map(u => `<img src="${esc(u)}" loading="lazy" onclick="ampliar(this.src)" alt="Foto da obra">`).join('')}</div>` : ''}</div>`).join('')
+          || '<div class="msg" style="padding:20px">O diário da obra aparece aqui assim que o encarregado registrar o primeiro dia.</div>'}
+      </div>`)}`;
+  }
+
+  function ampliar(src) { document.getElementById('zoomImg').src = src; document.getElementById('zoom').style.display = 'flex'; }
+
+  carregar();
+  setInterval(carregar, 60000);
+</script>
+</body>
+</html>

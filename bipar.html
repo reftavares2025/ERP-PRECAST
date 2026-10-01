@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bipar — Chão de Fábrica</title>
+<link rel="manifest" href="/api/method/frappe.precast_api.precast_bipar_manifest">
+<meta name="theme-color" content="#0F172A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/files/precast_icon.png">
+<style>
+    @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/files/inter-latin-wght-normal.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/files/inter-latin-ext-wght-normal.woff2') format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+  :root {
+    --bg: #0F172A; --bg2: #1E293B; --card: #0F172A; --border: #334155;
+    --accent: #3B82F6; --green: #10B981; --red: #ef4444; --yellow: #facc15;
+    --text: #ffffff; --text-dim: #94A3B8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh; padding-bottom: 30px;
+  }
+  header {
+    background: var(--bg2); padding: 14px 16px; text-align: center;
+    border-bottom: 2px solid var(--accent); position: sticky; top: 0; z-index: 10;
+  }
+  header .logo { font-size: 18px; font-weight: 900; letter-spacing: 1px; }
+  header .sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+  .container { padding: 16px; max-width: 480px; margin: 0 auto; }
+
+  .big-btn {
+    width: 100%; padding: 22px; font-size: 18px; font-weight: 800;
+    border-radius: 12px; border: none; cursor: pointer; margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .btn-scan { background: linear-gradient(135deg, #2563EB, #3B82F6); color: #fff; }
+  .btn-manual { background: var(--card); color: var(--accent); border: 2px solid var(--border); }
+
+  #videoWrap { display: none; position: relative; margin-bottom: 14px; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent); }
+  #video { width: 100%; display: block; background: #000; }
+  #videoWrap .close-scan {
+    position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6);
+    color: #fff; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; cursor: pointer;
+  }
+  #videoWrap .scan-hint {
+    position: absolute; bottom: 8px; left: 0; right: 0; text-align: center;
+    color: #fff; font-size: 12px; background: rgba(0,0,0,0.5); padding: 4px;
+  }
+
+  #manualEntry { display: none; margin-bottom: 14px; }
+  #manualEntry input {
+    width: 100%; padding: 14px; font-size: 16px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card); color: #fff; margin-bottom: 8px; box-sizing: border-box;
+  }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; margin-bottom: 14px;
+  }
+  .card-title { font-size: 20px; font-weight: 900; }
+  .card-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .card-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .card-field { background: #1E293B; border-radius: 6px; padding: 8px 10px; }
+  .card-field .label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; }
+  .card-field .value { font-size: 14px; font-weight: 700; }
+
+  .fase-badge {
+    display: inline-block; margin-top: 10px; padding: 6px 12px; border-radius: 20px;
+    background: var(--accent); color: #021019; font-weight: 800; font-size: 12px;
+  }
+
+  .section-title { font-size: 13px; font-weight: 800; color: var(--accent); margin: 18px 0 10px; }
+
+  .etapa-chip {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 8px; cursor: pointer;
+  }
+  .etapa-chip.aprovado { border-color: var(--green); }
+  .etapa-chip.reprovado { border-color: var(--red); }
+  .etapa-chip .status-icon { font-size: 18px; }
+
+  #checklistForm { display: none; background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 16px; margin-top: 10px; }
+  #checklistForm .field { margin-bottom: 10px; }
+  #checklistForm label { font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 4px; }
+  #checklistForm input, #checklistForm textarea, #checklistForm select {
+    width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border);
+    background: #1E293B; color: #fff; font-size: 14px; box-sizing: border-box;
+  }
+  .toggle-row { display: flex; gap: 10px; }
+  .toggle-btn {
+    flex: 1; padding: 12px; border-radius: 8px; border: 2px solid var(--border);
+    background: var(--card); color: #fff; font-weight: 700; cursor: pointer;
+  }
+  .toggle-btn.active-aprovado { background: var(--green); border-color: var(--green); color: #021019; }
+  .toggle-btn.active-reprovado { background: var(--red); border-color: var(--red); color: #fff; }
+
+  .action-btn { width: 100%; padding: 14px; border-radius: 8px; border: none; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 6px; }
+  .action-avancar { background: var(--green); color: #021019; }
+  .action-salvar { background: var(--accent); color: #021019; }
+  .action-cancelar { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+
+  #statusMsg { text-align: center; padding: 10px; font-size: 13px; border-radius: 8px; margin-bottom: 12px; display: none; }
+  #statusMsg.error { background: rgba(239,68,68,0.15); color: var(--red); display: block; }
+  #statusMsg.ok { background: rgba(34,197,94,0.15); color: var(--green); display: block; }
+
+    /* O sistema ocupa a tela inteira: esconde a barra e o rodapé do site que o ERPNext coloca em volta das páginas. */
+    body > .navbar, header.navbar, nav.navbar, .web-footer, footer.web-footer, .page-header, .page-breadcrumbs { display: none !important; }
+    .page_content, .page-content-wrapper, main.container, .container.my-4 { margin: 0 !important; padding: 0 !important; max-width: none !important; }
+    body { margin: 0 !important; }
+  </style>
+<script src="/files/js/jsQR.min.js"></script>
+</head>
+<body>
+  <!-- CÂMERA DA PROVA DE VIDA -->
+  <div id="cameraRosto" style="display:none; position:fixed; inset:0; z-index:60; background:#000; flex-direction:column; align-items:center; justify-content:center; padding:12px;">
+    <div id="rostoInstrucao" data-acao="" style="color:#fff; font-size:20px; font-weight:800; text-align:center; min-height:56px; margin-bottom:10px;"></div>
+    <video id="rostoVideo" playsinline muted style="width:100%; max-width:420px; border-radius:14px; transform:scaleX(-1); background:#111;"></video>
+    <div id="rostoPassos" style="color:#94A3B8; margin-top:12px; font-size:13px;"></div>
+    <button class="action-btn" style="margin-top:14px; max-width:420px; background:#475569;" onclick="cancelarCameraRosto()">Cancelar</button>
+  </div>
+
+  <!-- ENTRADA PELO ROSTO -->
+  <div id="telaRosto" style="display:none; position:fixed; inset:0; z-index:50; background:var(--bg); overflow-y:auto; padding:20px 16px 40px;">
+    <div style="max-width:420px; margin:0 auto;">
+      <div style="text-align:center; margin:18px 0 6px;"><img src="/files/precast_logo.png" alt="" style="height:64px;"></div>
+      <h1 style="text-align:center; font-size:20px; margin:6px 0 4px;">Entrar na produção</h1>
+      <p style="text-align:center; color:var(--text-dim); font-size:13px; margin:0 0 18px;">Seu nome, seu setor e uma foto do rosto. Sem senha.</p>
+      <div class="card">
+        <label style="font-size:12px; color:var(--text-dim);">NOME COMPLETO</label>
+        <input id="rostoNome" type="text" autocomplete="name" placeholder="Seu nome" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--bg2); color:#fff; font-size:16px; margin:4px 0 12px;">
+        <label style="font-size:12px; color:var(--text-dim);">SETOR</label>
+        <select id="rostoSetor" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--bg2); color:#fff; font-size:16px; margin:4px 0 14px;"></select>
+        <button id="rostoIniciar" class="action-btn action-avancar" onclick="iniciarEntradaPorRosto()">📷 Verificar o rosto e entrar</button>
+        <label id="rostoFotoBtn" class="action-btn action-avancar" style="display:none; text-align:center; cursor:pointer; margin-top:8px;">
+          <span id="rostoFotoTexto">📷 Tirar a foto</span>
+          <input id="rostoFoto" type="file" accept="image/*" capture="user" style="display:none;">
+        </label>
+        <div id="rostoMsg" style="margin-top:12px; font-size:13px; min-height:18px;"></div>
+        <p style="font-size:11px; color:var(--text-dim); margin:10px 0 0;">Para garantir que é você mesmo, a câmera pede alguns gestos (olhar de frente, virar a cabeça, sorrir ou abrir a boca). A foto fica só no seu celular: o sistema guarda apenas uma identificação numérica do rosto.
+          Na primeira vez você fica cadastrado no setor escolhido; para trabalhar em outro setor, peça ao responsável.</p>
+      </div>
+      <p style="text-align:center; margin-top:16px;"><a href="/login?redirect-to=/bipar" style="color:var(--accent); font-size:13px;">Entrar com e-mail e senha</a></p>
+    </div>
+  </div>
+
+  <header>
+    <div class="logo" id="companyLogo"><img src="/files/precast_logo.png" alt="" style="height:26px;width:26px;vertical-align:middle;margin-right:8px"><span id="companyNome">ERP Precast</span></div>
+    <div class="sub">BIPAR QR CODE — CHÃO DE FÁBRICA</div>
+  </header>
+
+  <div class="container">
+    <div id="statusMsg"></div>
+
+    <div id="scanArea">
+      <button class="big-btn btn-scan" onclick="startScan()">📷 Bipar QR Code da Peça</button>
+      <button class="big-btn btn-manual" onclick="toggleManualEntry()">⌨️ Digitar Código Manualmente</button>
+    </div>
+
+    <div id="videoWrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="scanCanvas" style="display:none;"></canvas>
+      <button class="close-scan" onclick="stopScan()">✕</button>
+      <div class="scan-hint">Aponte a câmera para o QR Code da etiqueta</div>
+    </div>
+
+    <div id="manualEntry">
+      <input type="text" id="manualCodeInput" placeholder="Ex: PM01" autocapitalize="characters">
+      <button class="big-btn btn-scan" onclick="buscarPecaManual()">Buscar Peça</button>
+    </div>
+
+    <div id="pieceArea"></div>
+  </div>
+
+<script>
+  const API_BASE = window.location.origin;
+  // Envia o token CSRF da sessão em toda gravação.
+  const _fetchNativo = window.fetch.bind(window);
+  let _tokenPromessa = null;
+  const _tokenCsrf = () => _tokenPromessa || (_tokenPromessa = _fetchNativo(`${API_BASE}/api/method/frappe.precast_api.token_csrf`, { credentials: 'include' })
+    .then(r => r.json()).then(j => (j.message && j.message.token) || '').catch(() => { _tokenPromessa = null; return ''; }));
+  window.fetch = async (input, init) => {
+    const metodo = String((init && init.method) || 'GET').toUpperCase();
+    if (metodo !== 'GET' && String(input).startsWith(API_BASE) && !String(input).endsWith('token_csrf')) {
+      const token = await _tokenCsrf();
+      if (token) init = Object.assign({}, init, { headers: Object.assign({}, init.headers, { 'X-Frappe-CSRF-Token': token }) });
+    }
+    return _fetchNativo(input, init);
+  };
+  let currentCodigo = null;
+  let currentPeca = null;
+  let currentChecklist = [];
+  let scanStream = null;
+  let scanTimer = null;
+  let selectedEtapa = null;
+  let selectedAprovado = true;
+
+  const ETAPAS = [
+    "1. Corte e Dobra", "2. Armação", "3. Fôrma",
+    "4. Fôrma + Armação (Insertos)", "5. Concretagem"
+  ];
+
+  function showStatus(msg, type) {
+    const el = document.getElementById('statusMsg');
+    el.className = type;
+    el.innerText = msg;
+    if (type) setTimeout(() => { el.className = ''; }, 5000);
+  }
+
+  function toggleManualEntry() {
+    const el = document.getElementById('manualEntry');
+    el.style.display = el.style.display === 'none' || !el.style.display ? 'block' : 'none';
+  }
+
+  async function buscarPecaManual() {
+    const codigo = document.getElementById('manualCodeInput').value.trim();
+    if (!codigo) return;
+    await buscarPeca(codigo);
+  }
+
+  async function buscarPeca(codigo) {
+    try {
+      const resp = await fetch(`${API_BASE}/api/method/frappe.precast_api.get_piece_for_scan`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({codigo})
+      });
+      const data = await resp.json();
+      const m = data.message || {};
+      if (m.success) {
+        currentCodigo = m.peca.codigo_peca;
+        currentPeca = m.peca;
+        currentChecklist = m.checklist || [];
+        renderPeca();
+        if (navigator.vibrate) navigator.vibrate(80);
+      } else if (m.ambiguo) {
+        document.getElementById('pieceArea').innerHTML = `<div class="card"><div class="card-title">${m.error}</div>
+          ${m.opcoes.map(o => `<button class="action-btn action-avancar" style="margin-top:8px;" onclick="buscarPeca('PECA:' + ${JSON.stringify(o.codigo).replace(/"/g, '&quot;')})">Obra ${o.obra}</button>`).join('')}</div>`;
+      } else {
+        showStatus(m.error || 'Peça não encontrada', 'error');
+      }
+    } catch (err) {
+      showStatus('Erro ao buscar peça: ' + err.message, 'error');
+    }
+  }
+
+  function ultimoStatusEtapa(etapa) {
+    return currentChecklist.find(c => c.etapa === etapa) || null;
+  }
+
+  function renderPeca() {
+    const p = currentPeca;
+    const area = document.getElementById('pieceArea');
+
+    const etapasHtml = ETAPAS.map(et => {
+      const st = ultimoStatusEtapa(et);
+      let cls = '', icon = '⬜', info = 'Sem registro';
+      if (st) {
+        cls = st.aprovado ? 'aprovado' : 'reprovado';
+        icon = st.aprovado ? '✅' : '❌';
+        info = `${st.aprovado ? 'Aprovado' : 'Reprovado'} — ${(st.data_inspecao || '').slice(0,16).replace('T',' ')}`;
+      }
+      return `
+        <div class="etapa-chip ${cls}" onclick="abrirChecklistForm('${et}')">
+          <div>
+            <div style="font-weight:700; font-size:13px;">${et}</div>
+            <div style="font-size:11px; color:var(--text-dim);">${info}</div>
+          </div>
+          <div class="status-icon">${icon}</div>
+        </div>
+      `;
+    }).join('');
+
+    area.innerHTML = `
+      <div class="card">
+        <div class="card-title">${p.tag || p.codigo_peca}</div>
+        <div class="card-sub">#${p.codigo_peca} — ${p.obra || ''}</div>
+        <div class="fase-badge">${p.status_producao || '-'}</div>
+        <div class="card-row">
+          <div class="card-field"><div class="label">Produto</div><div class="value">${p.produto || '-'}</div></div>
+          <div class="card-field"><div class="label">Seção</div><div class="value">${p.secao || '-'}</div></div>
+          <div class="card-field"><div class="label">Comprimento</div><div class="value">${p.comprimento_m || '-'} m</div></div>
+          <div class="card-field"><div class="label">Peso</div><div class="value">${p.peso_kg || '-'} kg</div></div>
+        </div>
+        <button class="action-btn action-avancar" onclick="avancarFase()">➜ Avançar para Próxima Fase</button>
+      </div>
+
+      ${p.print_url ? `<div class="section-title">📐 PRANCHA DESTA PEÇA${p.folha_prancha ? ' — FOLHA ' + p.folha_prancha : ''}</div>
+      <div class="card" style="padding:8px;"><a href="${p.prancha_url || p.print_url}" target="_blank"><img src="${p.print_url}" alt="Prancha da peça ${p.codigo_peca}" style="width:100%; border-radius:6px; background:#fff;"></a>
+        <a href="${p.prancha_url || p.print_url}" target="_blank" class="action-btn" style="display:block; text-align:center; margin-top:8px; text-decoration:none;">Abrir a prancha em tela cheia (PDF)</a></div>` : ''}
+
+      <div class="section-title">✅ CHECKLIST DE QUALIDADE (5 ETAPAS)</div>
+      ${etapasHtml}
+
+      <div id="checklistForm">
+        <div style="font-weight:800; font-size:14px; margin-bottom:10px;" id="checklistFormTitle"></div>
+        <div class="field">
+          <label>RESULTADO</label>
+          <div class="toggle-row">
+            <button type="button" class="toggle-btn active-aprovado" id="btnAprovado" onclick="setAprovado(true)">✅ Aprovado</button>
+            <button type="button" class="toggle-btn" id="btnReprovado" onclick="setAprovado(false)">❌ Reprovado</button>
+          </div>
+        </div>
+        <div class="field"><label>INSPETOR</label><input type="text" id="fInspetor" placeholder="Nome do responsável"></div>
+        <div id="concretagemFields" style="display:none;">
+          <div class="field"><label>CAMINHÃO BETONEIRA</label><input type="text" id="fCaminhao"></div>
+          <div class="field"><label>LOTE DO CONCRETO</label><input type="text" id="fLote"></div>
+          <div class="field"><label>FCK CORPO DE PROVA</label><input type="text" id="fFck"></div>
+        </div>
+        <div class="field"><label>OBSERVAÇÕES</label><textarea id="fObs" rows="2"></textarea></div>
+        <button class="action-btn action-salvar" onclick="salvarChecklist()">💾 Registrar Inspeção</button>
+        <button class="action-btn action-cancelar" onclick="fecharChecklistForm()">Cancelar</button>
+      </div>
+
+      <button class="big-btn btn-manual" style="margin-top:16px;" onclick="resetScan()">🔄 Bipar Outra Peça</button>
+    `;
+  }
+
+  function abrirChecklistForm(etapa) {
+    selectedEtapa = etapa;
+    setAprovado(true);
+    document.getElementById('checklistFormTitle').innerText = `Registrar: ${etapa}`;
+    document.getElementById('concretagemFields').style.display = etapa.startsWith('5.') ? 'block' : 'none';
+    document.getElementById('fObs').value = '';
+    document.getElementById('checklistForm').style.display = 'block';
+    document.getElementById('checklistForm').scrollIntoView({behavior: 'smooth', block: 'center'});
+  }
+  function fecharChecklistForm() {
+    document.getElementById('checklistForm').style.display = 'none';
+    selectedEtapa = null;
+  }
+  function setAprovado(val) {
+    selectedAprovado = val;
+    document.getElementById('btnAprovado').className = 'toggle-btn' + (val ? ' active-aprovado' : '');
+    document.getElementById('btnReprovado').className = 'toggle-btn' + (!val ? ' active-reprovado' : '');
+  }
+
+  async function salvarChecklist() {
+    if (!selectedEtapa || !currentCodigo) return;
+    const payload = {
+      codigo_peca: currentCodigo,
+      etapa: selectedEtapa,
+      aprovado: selectedAprovado ? 1 : 0,
+      inspetor: document.getElementById('fInspetor').value,
+      observacoes: document.getElementById('fObs').value,
+      caminhao_betoneira: document.getElementById('fCaminhao')?.value || '',
+      lote_concreto: document.getElementById('fLote')?.value || '',
+      fck_corpo_prova: document.getElementById('fFck')?.value || ''
+    };
+    try {
+      const resp = await fetch(`${API_BASE}/api/method/frappe.precast_api.submit_checklist`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (data.message && data.message.success) {
+        showStatus('Checklist registrado!', 'ok');
+        fecharChecklistForm();
+        await buscarPeca(currentCodigo);
+      } else {
+        showStatus(data.message?.error || 'Erro ao registrar checklist', 'error');
+      }
+    } catch (err) {
+      showStatus('Erro: ' + err.message, 'error');
+    }
+  }
+
+  async function avancarFase() {
+    if (!currentCodigo) return;
+    if (!confirm('Avançar esta peça para a próxima fase de produção?')) return;
+    try {
+      const resp = await fetch(`${API_BASE}/api/method/frappe.precast_api.advance_piece_phase`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({codigo_peca: currentCodigo})
+      });
+      const data = await resp.json();
+      if (data.message && data.message.success) {
+        showStatus(`✅ Peça ${currentPeca?.tag || currentCodigo} atualizada com sucesso! Fase: ${data.message.status_producao}`, 'ok');
+        if (navigator.vibrate) navigator.vibrate([50,50,50]);
+        await buscarPeca(currentCodigo);
+      } else {
+        showStatus(data.message?.error || 'Erro ao avançar fase', 'error');
+      }
+    } catch (err) {
+      showStatus('Erro: ' + err.message, 'error');
+    }
+  }
+
+  function resetScan() {
+    currentCodigo = null; currentPeca = null; currentChecklist = [];
+    document.getElementById('pieceArea').innerHTML = '';
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  // ---------------------------------------------------------------
+  // Leitura de QR Code — SEMPRE funciona com câmera, em qualquer navegador:
+  // usa o BarcodeDetector nativo quando o aparelho suporta (mais rápido),
+  // e cai automaticamente pra decodificação via jsQR (biblioteca hospedada
+  // localmente, sem depender de internet) quando não suporta — iPhone,
+  // Android mais antigo, qualquer navegador com câmera. Nunca pede pro
+  // operário digitar o código à mão; digitar fica só como atalho opcional.
+  // ---------------------------------------------------------------
+  let useNativeDetector = false;
+  let nativeDetector = null;
+  let scanCanvasCtx = null;
+
+  async function startScan() {
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}});
+    } catch (err) {
+      showStatus('Não foi possível acessar a câmera: ' + err.message + '. Verifique a permissão de câmera do navegador.', 'error');
+      return;
+    }
+
+    const video = document.getElementById('video');
+    video.srcObject = scanStream;
+    document.getElementById('videoWrap').style.display = 'block';
+
+    useNativeDetector = 'BarcodeDetector' in window;
+    if (useNativeDetector) {
+      try {
+        nativeDetector = new BarcodeDetector({formats: ['qr_code']});
+      } catch (e) {
+        useNativeDetector = false;
+      }
+    }
+
+    const canvas = document.getElementById('scanCanvas');
+    scanCanvasCtx = canvas.getContext('2d', {willReadFrequently: true});
+
+    scanTimer = setInterval(scanFrame, 250);
+  }
+
+  async function scanFrame() {
+    const video = document.getElementById('video');
+    if (!video.videoWidth) return; // vídeo ainda não tem frame pronto
+
+    if (useNativeDetector) {
+      try {
+        const codes = await nativeDetector.detect(video);
+        if (codes.length > 0) {
+          onQrDetected(codes[0].rawValue);
+          return;
+        }
+      } catch (e) {
+        useNativeDetector = false; // some navegadores anunciam suporte mas falham em runtime — cai pro jsQR
+      }
+    }
+
+    if (!useNativeDetector && typeof jsQR === 'function') {
+      const canvas = document.getElementById('scanCanvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      scanCanvasCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const frame = scanCanvasCtx.getImageData(0, 0, canvas.width, canvas.height);
+      const result = jsQR(frame.data, frame.width, frame.height, {inversionAttempts: 'dontInvert'});
+      if (result && result.data) {
+        onQrDetected(result.data);
+      }
+    }
+  }
+
+  function onQrDetected(rawValue) {
+    stopScan();
+    if (navigator.vibrate) navigator.vibrate(80);
+    buscarPeca(rawValue);
+  }
+
+  function stopScan() {
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+    if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+    document.getElementById('videoWrap').style.display = 'none';
+  }
+
+  // PWA: registra o service worker pra permitir "Instalar app" no celular
+  // e abrir a casca do app mesmo com sinal fraco no chão de fábrica.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/api/method/frappe.precast_api.precast_bipar_sw', { scope: '/' }).catch(() => {});
+    });
+  }
+
+
+  // ---------------- Entrada pelo rosto (com prova de vida) ----------------
+  const LIMITES = { giroNeutro: 0.08, giroMinimo: 0.20, sorriso: 1.12, bocaAberta: 0.14 };   // um pouco mais exigentes que os do servidor
+  const TEXTOS = {
+    neutro: 'Olhe de frente para a câmera', virar: 'Vire a cabeça para um lado, devagar', virar_oposto: 'Agora vire para o lado contrário',
+    sorrir: 'Sorria mostrando os dentes', abrir_boca: 'Abra bem a boca',
+  };
+  let cancelouRosto = false, streamRosto = null;
+
+  function carregarScript(src) {
+    return new Promise((ok, erro) => { const t = document.createElement('script'); t.src = src; t.onload = ok; t.onerror = () => erro(new Error('Não foi possível carregar o reconhecimento facial.')); document.head.appendChild(t); });
+  }
+
+  async function prepararReconhecimento() {
+    if (window.faceapi && window.faceapi.nets.faceRecognitionNet.isLoaded) return;
+    if (!window.faceapi) await carregarScript('/files/face/face-api.js');
+    await faceapi.tf.setBackend('webgl').catch(() => faceapi.tf.setBackend('cpu'));
+    await faceapi.tf.ready();
+    const base = '/files/face/models';
+    await Promise.all([faceapi.nets.tinyFaceDetector.loadFromUri(base), faceapi.nets.faceLandmark68TinyNet.loadFromUri(base), faceapi.nets.faceRecognitionNet.loadFromUri(base)]);
+  }
+
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  // Medidas do rosto a partir dos 68 pontos: giro da cabeça (yaw), abertura e largura da boca.
+  function medidasDoRosto(p) {
+    const larguraRosto = dist(p[0], p[16]);
+    const yaw = (p[30].x - (p[0].x + p[16].x) / 2) / larguraRosto;
+    const larguraBoca = dist(p[48], p[54]);
+    return { yaw: +yaw.toFixed(4), boca: +(dist(p[62], p[66]) / Math.max(larguraBoca, 1e-6)).toFixed(4), largura_boca: +(larguraBoca / larguraRosto).toFixed(4) };
+  }
+
+  // Lê um quadro (vídeo, imagem ou canvas): devolve as medidas e, se pedido, o descritor do rosto. Fica global de propósito
+  // para os testes poderem simular uma pessoa fazendo os gestos.
+  window.analisarQuadro = async function (fonte, comDescritor) {
+    const opcoes = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+    let todos = faceapi.detectAllFaces(fonte, opcoes).withFaceLandmarks(true);
+    if (comDescritor) todos = todos.withFaceDescriptors();
+    const rostos = await todos;
+    if (rostos.length === 0) return { erro: 'sem_rosto' };
+    if (rostos.length > 1) return { erro: 'varios_rostos' };
+    const r = rostos[0];
+    return { metricas: medidasDoRosto(r.landmarks.positions), descritor: comDescritor ? Array.from(r.descriptor) : null };
+  };
+
+  function cumpre(acao, m, base, primeiroGiro) {
+    if (acao === 'neutro') return Math.abs(m.yaw) <= LIMITES.giroNeutro;
+    if (acao === 'virar') return Math.abs(m.yaw) >= LIMITES.giroMinimo;
+    if (acao === 'virar_oposto') return Math.abs(m.yaw) >= LIMITES.giroMinimo && m.yaw * primeiroGiro < 0;
+    if (acao === 'sorrir') return Math.abs(m.yaw) <= LIMITES.giroNeutro + 0.05 && m.largura_boca >= base.largura_boca * LIMITES.sorriso && m.boca < 0.3;
+    if (acao === 'abrir_boca') return Math.abs(m.yaw) <= LIMITES.giroNeutro + 0.05 && m.boca >= base.boca + LIMITES.bocaAberta;
+    return false;
+  }
+
+  const precisaDescritor = acao => acao === 'neutro' || acao === 'sorrir' || acao === 'abrir_boca';
+  const espera = ms => new Promise(r => setTimeout(r, ms));
+
+  function msgRosto(txt, cor) { const m = document.getElementById('rostoMsg'); m.style.color = cor || 'var(--text-dim)'; m.textContent = txt; }
+
+  function pintarPassos(acoes, feitos) {
+    document.getElementById('rostoPassos').textContent = acoes.map((a, i) => (i < feitos ? '●' : '○')).join(' ');
+  }
+
+  // --- câmera ao vivo (precisa de conexão segura: https ou localhost)
+  async function desafioAoVivo(acoes) {
+    cancelouRosto = false;
+    streamRosto = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 } }, audio: false });
+    const video = document.getElementById('rostoVideo');
+    video.srcObject = streamRosto; await video.play();
+    document.getElementById('cameraRosto').style.display = 'flex';
+    const quadros = [], t0 = performance.now();
+    let base = null, primeiroGiro = null;
+    try {
+      for (let i = 0; i < acoes.length; i++) {
+        const acao = acoes[i], inst = document.getElementById('rostoInstrucao');
+        inst.textContent = TEXTOS[acao]; inst.dataset.acao = acao; pintarPassos(acoes, i);
+        const limite = performance.now() + 18000;
+        let seguidos = 0, feito = null;
+        while (!feito) {
+          if (cancelouRosto) throw new Error('Cancelado.');
+          if (performance.now() > limite) throw new Error('Não deu para ver o gesto a tempo. Tente de novo, com boa luz e o rosto inteiro na imagem.');
+          const q = await window.analisarQuadro(video, false);
+          if (q.metricas && cumpre(acao, q.metricas, base, primeiroGiro)) seguidos++; else seguidos = 0;
+          if (seguidos >= 2) {
+            const final = precisaDescritor(acao) ? await window.analisarQuadro(video, true) : q;
+            if (final.metricas && cumpre(acao, final.metricas, base, primeiroGiro) && (!precisaDescritor(acao) || final.descritor)) feito = final; else seguidos = 0;
+          }
+          if (!feito) await espera(160);
+        }
+        if (acao === 'neutro') base = feito.metricas;
+        if (acao === 'virar') primeiroGiro = feito.metricas.yaw;
+        quadros.push({ acao, metricas: feito.metricas, descritor: feito.descritor || undefined, t: Math.round(performance.now() - t0) });
+        pintarPassos(acoes, i + 1);
+        await espera(900);
+      }
+    } finally { fecharCameraRosto(); }
+    return quadros;
+  }
+
+  function fecharCameraRosto() {
+    if (streamRosto) { streamRosto.getTracks().forEach(t => t.stop()); streamRosto = null; }
+    document.getElementById('cameraRosto').style.display = 'none';
+  }
+  function cancelarCameraRosto() { cancelouRosto = true; fecharCameraRosto(); }
+
+  // --- sem câmera ao vivo (página aberta por http no celular): uma foto por passo, com o mesmo desafio
+  function lerImagem(arquivo) {
+    return new Promise((ok, erro) => {
+      const url = URL.createObjectURL(arquivo), img = new Image();
+      img.onload = () => {
+        const escala = Math.min(1, 720 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width * escala); c.height = Math.round(img.height * escala);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); ok(c);
+      };
+      img.onerror = () => erro(new Error('Não consegui abrir a foto.'));
+      img.src = url;
+    });
+  }
+
+  function esperarFoto(texto) {
+    return new Promise(ok => {
+      const rotulo = document.getElementById('rostoFotoBtn'), entrada = document.getElementById('rostoFoto');
+      document.getElementById('rostoFotoTexto').textContent = '📷 ' + texto;
+      rotulo.style.display = 'block';
+      entrada.onchange = e => { const f = e.target.files[0]; e.target.value = ''; rotulo.style.display = 'none'; if (f) ok(f); };
+    });
+  }
+
+  async function desafioPorFotos(acoes) {
+    const quadros = [], t0 = performance.now();
+    let base = null, primeiroGiro = null;
+    for (let i = 0; i < acoes.length; i++) {
+      const acao = acoes[i];
+      for (let tentativa = 0; ; tentativa++) {
+        const foto = await esperarFoto(`Passo ${i + 1} de ${acoes.length}: ${TEXTOS[acao]}`);
+        msgRosto('Lendo a foto...');
+        const q = await window.analisarQuadro(await lerImagem(foto), precisaDescritor(acao));
+        if (q.erro) { msgRosto(q.erro === 'varios_rostos' ? 'Apareceu mais de um rosto. Tire a foto só de você.' : 'Não achei o rosto. Tire de novo, com boa luz.', '#ef4444'); continue; }
+        if (!cumpre(acao, q.metricas, base, primeiroGiro) || (precisaDescritor(acao) && !q.descritor)) { msgRosto(`A foto não mostra o gesto pedido (${TEXTOS[acao].toLowerCase()}). Tire de novo.`, '#ef4444'); continue; }
+        if (acao === 'neutro') base = q.metricas;
+        if (acao === 'virar') primeiroGiro = q.metricas.yaw;
+        quadros.push({ acao, metricas: q.metricas, descritor: q.descritor || undefined, t: Math.round(performance.now() - t0) });
+        msgRosto('');
+        await espera(700);
+        break;
+      }
+    }
+    return quadros;
+  }
+
+  async function iniciarEntradaPorRosto() {
+    const nome = document.getElementById('rostoNome').value.trim(), setor = document.getElementById('rostoSetor').value;
+    if (nome.length < 3) { msgRosto('Escreva o seu nome completo primeiro.', '#ef4444'); return; }
+    const botao = document.getElementById('rostoIniciar');
+    botao.disabled = true;
+    try {
+      msgRosto('Preparando...');
+      await prepararReconhecimento();
+      const d = (await (await fetch(`${API_BASE}/api/method/frappe.precast_api.rosto_desafio`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).json()).message || {};
+      if (!d.success) throw new Error('O sistema não respondeu. Tente de novo.');
+      let carga = {};
+      if (d.exigido) {
+        msgRosto('');
+        const aoVivo = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.isSecureContext);
+        const quadros = aoVivo ? await desafioAoVivo(d.acoes) : await desafioPorFotos(d.acoes);
+        carga = { descritor: quadros[0].descritor, desafio: { token: d.token, quadros } };
+      } else {
+        const foto = await esperarFoto('Tirar a foto do rosto');
+        const q = await window.analisarQuadro(await lerImagem(foto), true);
+        if (q.erro || !q.descritor) throw new Error('Não achei um rosto único na foto. Tire de frente, com boa luz.');
+        carga = { descritor: q.descritor };
+      }
+      msgRosto('Conferindo...');
+      const resp = await fetch(`${API_BASE}/api/method/frappe.precast_api.rosto_entrar`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...carga, nome, setor }) });
+      const r = (await resp.json()).message || { success: false, error: 'O servidor não respondeu. Tente de novo.' };
+      if (r.success) { msgRosto(r.primeiro_acesso ? `Cadastro feito, ${r.nome}. Entrando...` : `Olá, ${r.nome}! Entrando...`, '#22c55e'); setTimeout(() => window.location.reload(), 700); }
+      else msgRosto(r.error || 'Não foi possível entrar.', '#ef4444');
+    } catch (e) { msgRosto(e.message, '#ef4444'); }
+    finally { botao.disabled = false; document.getElementById('rostoFotoBtn').style.display = 'none'; }
+  }
+
+  async function mostrarTelaRosto() {
+    document.getElementById('telaRosto').style.display = 'block';
+    try {
+      const j = await (await fetch(`${API_BASE}/api/method/frappe.precast_api.rosto_config`)).json();
+      const m = j.message || {};
+      document.getElementById('rostoSetor').innerHTML = (m.setores || []).map(x => `<option>${x}</option>`).join('');
+      if (m.cadastro_aberto === false) msgRosto('Novos cadastros pelo operador estão fechados: só quem já foi cadastrado entra.', '#eab308');
+    } catch (e) { /* segue sem a lista */ }
+  }
+
+  // Multi-tenant: mostra o nome da empresa logada, nunca uma marca fixa.
+  async function loadBranding() {
+    try {
+      const resp = await fetch(`${API_BASE}/api/method/frappe.precast_api.get_branding`, { credentials: 'include' });
+      if (resp.status === 401 || resp.status === 403) { mostrarTelaRosto(); return; }
+      const res = await resp.json();
+      const b = res.message || {};
+      if (b.company_name) document.getElementById('companyNome').textContent = b.company_name;
+    } catch (err) { /* mantem o texto padrao */ }
+  }
+  loadBranding();
+</script>
+</body>
+</html>
