@@ -786,6 +786,68 @@ def get_checklists(limit=200):
         order_by='data_inspecao desc', limit=int(limit))
     return {"success": True, "checklists": rows}
 
+# ---- Rastreabilidade: lote de concreto, corpos de prova, certificados do aço e RG da peça (precast_qualidade.py)
+
+@endpoint()
+def get_rastreabilidade():
+    from frappe.precast_qualidade import resumo
+    return resumo()
+
+
+@endpoint()
+def registrar_lote_concreto(codigo, fck_especificado, data_concretagem=None, usina=None, traco=None, slump_cm=None,
+                            temperatura_c=None, volume_m3=None, nota_fiscal=None, observacoes=None):
+    _exigir_papel("Qualidade", "Produção", "Direção")
+    from frappe.precast_qualidade import registrar_lote
+    return registrar_lote(codigo, fck_especificado, data_concretagem, usina, traco, slump_cm, temperatura_c,
+                          volume_m3, nota_fiscal, observacoes)
+
+
+@endpoint()
+def registrar_corpo_prova(lote, idade_dias, fck_obtido, data_ruptura=None, carga_kn=None):
+    _exigir_papel("Qualidade", "Direção")
+    from frappe.precast_qualidade import registrar_corpo_de_prova
+    return registrar_corpo_de_prova(lote, idade_dias, fck_obtido, data_ruptura, carga_kn)
+
+
+@endpoint()
+def vincular_lote_pecas(lote, pecas):
+    _exigir_papel("Qualidade", "Produção", "Direção")
+    from frappe.precast_qualidade import vincular_lote
+    return vincular_lote(lote, pecas)
+
+
+@endpoint()
+def registrar_certificado_aco(corrida, bitola_mm, fabricante=None, norma=None, data_recebimento=None,
+                              nota_fiscal=None, certificado_anexo=None):
+    _exigir_papel("Qualidade", "Produção", "Direção")
+    from frappe.precast_qualidade import registrar_certificado
+    return registrar_certificado(corrida, bitola_mm, fabricante, norma, data_recebimento, nota_fiscal, certificado_anexo)
+
+
+@endpoint()
+def vincular_corridas_pecas(pecas, corridas):
+    _exigir_papel("Qualidade", "Produção", "Direção")
+    from frappe.precast_qualidade import vincular_corridas
+    return vincular_corridas(pecas, corridas)
+
+
+@endpoint()
+def get_rg_peca(codigo_peca):
+    from frappe.precast_qualidade import rg_da_peca
+    return rg_da_peca(codigo_peca)
+
+
+@endpoint()
+def config_rastreabilidade(exigir_rg_expedicao=None):
+    """Liga ou desliga a exigência do RG completo para a peça entrar num romaneio."""
+    from frappe.precast_qualidade import definir_exigir_rg, exigir_rg_para_expedir
+    if exigir_rg_expedicao is not None:
+        _exigir_papel("Direção", "Qualidade")
+        definir_exigir_rg(str(exigir_rg_expedicao).lower() in ("1", "true", "yes"))
+    return {"success": True, "exigir_rg_expedicao": exigir_rg_para_expedir()}
+
+
 @endpoint()
 def get_transportadoras():
     return {"success": True, "transportadoras": frappe.get_all('Transportadora',
@@ -919,6 +981,12 @@ def create_romaneio(obra, caminhao, data_expedicao, pecas, motorista=None):
             "error": "Peça(s) com não conformidade aberta — não podem ser expedidas até o reparo ser aprovado: " + ", ".join(com_rnc)
         }
 
+    from frappe.precast_qualidade import exigir_rg_para_expedir, pecas_sem_rg_completo
+    if exigir_rg_para_expedir():
+        sem_rg = pecas_sem_rg_completo(pecas)
+        if sem_rg:
+            return {"success": False, "error": "RG da peça incompleto (a exigência está ligada na aba Qualidade): " + "; ".join(sem_rg[:5])}
+
     caminhao_doc = frappe.get_doc('Caminhao', caminhao)
     peso_total = 0.0
     for cod in pecas:
@@ -927,7 +995,11 @@ def create_romaneio(obra, caminhao, data_expedicao, pecas, motorista=None):
     if peso_total > (caminhao_doc.capacidade_kg or 0):
         return {"success": False, "error": f"Peso total ({peso_total:.0f} kg) excede a capacidade do caminhão ({caminhao_doc.capacidade_kg:.0f} kg)."}
 
-    codigo = f"ROM-{frappe.utils.now_datetime().strftime('%Y%m%d%H%M%S')}"
+    base_codigo = f"ROM-{frappe.utils.now_datetime().strftime('%Y%m%d%H%M%S')}"
+    codigo, repeticao = base_codigo, 1
+    while frappe.db.exists('Romaneio', codigo):   # dois romaneios no mesmo segundo
+        repeticao += 1
+        codigo = f"{base_codigo}-{repeticao}"
     romaneio = frappe.get_doc({
         "doctype": "Romaneio", "codigo": codigo, "obra": obra, "caminhao": caminhao,
         "motorista": motorista or caminhao_doc.motorista_padrao, "data_expedicao": data_expedicao,

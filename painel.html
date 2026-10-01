@@ -582,6 +582,18 @@
       color: #fff;
     }
 
+    .rastro-card { background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; }
+    .rastro-titulo { font-size:12px; font-weight:700; color:#e2e8f0; margin-bottom:8px; }
+    .rastro-campos { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .rastro-campos select[multiple] { grid-column:1 / -1; }
+    .rastro-pecas { max-height:130px; overflow:auto; margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; }
+    .rastro-pecas label { font-size:11px; background:#1e293b; border:1px solid #334155; border-radius:4px; padding:3px 8px; cursor:pointer; color:#cbd5e1; }
+    .rg-itens { display:grid; gap:6px; margin:8px 0 14px; }
+    .rg-item { display:flex; gap:10px; align-items:baseline; font-size:13px; padding:6px 10px; border-radius:6px; background:#0f172a; border:1px solid #334155; }
+    .rg-item.ok { border-color:#166534; } .rg-item.falha { border-color:#991b1b; } .rg-item.pendente { border-color:#854d0e; }
+    .rg-bloco-titulo { font-size:11px; font-weight:700; letter-spacing:.5px; color:#94a3b8; text-transform:uppercase; margin:14px 0 6px; }
+    .rg-tabela { width:100%; border-collapse:collapse; font-size:12px; }
+    .rg-tabela th, .rg-tabela td { text-align:left; padding:5px 8px; border-bottom:1px solid #334155; }
     .btn-zpl {
       background: rgba(2, 132, 199, 0.25);
       border: 1px solid #3B82F6;
@@ -1587,6 +1599,85 @@
           <div id="qualMsg" style="font-size:12px; margin-top:8px;"></div>
         </div>
 
+        <div style="background:#162033; border:1px solid #334155; border-radius:10px; padding:16px; margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <div style="font-size:12px; font-weight:700; color:#3B82F6;">🧬 RASTREABILIDADE: CONCRETO, CORPOS DE PROVA E AÇO</div>
+            <label style="font-size:12px; display:flex; gap:8px; align-items:center; cursor:pointer; color:#cbd5e1;">
+              <input type="checkbox" id="rastroExigirRg" onchange="rastroConfigExigir(this.checked)">
+              Exigir o RG completo para a peça entrar num romaneio
+            </label>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px;">
+            <div class="rastro-card">
+              <div class="rastro-titulo">1. Lote de concreto</div>
+              <div class="rastro-campos">
+                <input class="filter-input" id="rastroLoteCodigo" placeholder="Código do lote *">
+                <input class="filter-input" id="rastroLoteFck" type="number" step="0.1" placeholder="fck especificado (MPa) *">
+                <input class="filter-input" id="rastroLoteData" type="date" title="Data da concretagem">
+                <input class="filter-input" id="rastroLoteUsina" placeholder="Usina / fornecedor">
+                <input class="filter-input" id="rastroLoteTraco" placeholder="Traço">
+                <input class="filter-input" id="rastroLoteSlump" type="number" step="0.5" placeholder="Slump (cm)">
+                <input class="filter-input" id="rastroLoteTemp" type="number" step="0.5" placeholder="Temperatura (°C)">
+                <input class="filter-input" id="rastroLoteVolume" type="number" step="0.1" placeholder="Volume (m³)">
+                <input class="filter-input" id="rastroLoteNf" placeholder="Nota fiscal / ticket">
+              </div>
+              <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981; margin-top:8px;" onclick="rastroRegistrarLote()">+ Cadastrar lote</button>
+            </div>
+            <div class="rastro-card">
+              <div class="rastro-titulo">2. Corpo de prova (ruptura)</div>
+              <div class="rastro-campos">
+                <select class="filter-select" id="rastroCpLote"></select>
+                <input class="filter-input" id="rastroCpIdade" type="number" min="1" max="365" placeholder="Idade (dias): 7, 28...">
+                <input class="filter-input" id="rastroCpFck" type="number" step="0.1" placeholder="Resistência obtida (MPa)">
+                <input class="filter-input" id="rastroCpData" type="date" title="Data da ruptura">
+              </div>
+              <div style="font-size:11px; color:#94a3b8; margin-top:6px;">Aos 28 dias o resultado vale: abaixo do fck reprova o lote e abre uma não conformidade em cada peça dele.</div>
+              <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981; margin-top:8px;" onclick="rastroRegistrarCp()">+ Registrar ruptura</button>
+            </div>
+            <div class="rastro-card">
+              <div class="rastro-titulo">3. Certificado do aço</div>
+              <div class="rastro-campos">
+                <input class="filter-input" id="rastroAcoCorrida" placeholder="Corrida / lote do aço *">
+                <input class="filter-input" id="rastroAcoBitola" type="number" step="0.1" placeholder="Bitola (mm) *">
+                <input class="filter-input" id="rastroAcoFabricante" placeholder="Fabricante">
+                <input class="filter-input" id="rastroAcoNorma" placeholder="Categoria (CA-50)">
+                <input class="filter-input" id="rastroAcoNf" placeholder="Nota fiscal">
+                <input class="filter-input" id="rastroAcoData" type="date" title="Data de recebimento">
+              </div>
+              <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981; margin-top:8px;" onclick="rastroRegistrarAco()">+ Cadastrar corrida</button>
+            </div>
+            <div class="rastro-card">
+              <div class="rastro-titulo">4. Ligar às peças</div>
+              <div class="rastro-campos">
+                <select class="filter-select" id="rastroVincObra" onchange="rastroListarPecas()"></select>
+                <select class="filter-select" id="rastroVincLote"></select>
+                <select class="filter-select" id="rastroVincCorridas" multiple size="3" title="Segure Ctrl para marcar mais de uma corrida"></select>
+              </div>
+              <div id="rastroVincPecas" class="rastro-pecas"></div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                <button class="filter-badge-btn" onclick="rastroMarcarTodas()">Marcar todas</button>
+                <button class="filter-badge-btn" style="background:#2563EB; border-color:#3B82F6;" onclick="rastroVincularLote()">Ligar lote às marcadas</button>
+                <button class="filter-badge-btn" style="background:#2563EB; border-color:#3B82F6;" onclick="rastroVincularAco()">Ligar aço às marcadas</button>
+              </div>
+            </div>
+          </div>
+          <div id="rastroMsg" style="font-size:12px; margin-top:10px;"></div>
+          <div style="font-size:12px; font-weight:700; color:#94a3b8; margin:16px 0 8px;">LOTES DE CONCRETO</div>
+          <div class="table-container" style="height:auto; max-height:260px;">
+            <table class="tabela-industrial">
+              <thead><tr><th>Lote</th><th>Concretagem</th><th>fck</th><th>Usina</th><th>Peças</th><th>Rupturas</th><th>Situação</th></tr></thead>
+              <tbody id="rastroLotesTbody"></tbody>
+            </table>
+          </div>
+          <div style="font-size:12px; font-weight:700; color:#94a3b8; margin:16px 0 8px;">CERTIFICADOS DO AÇO</div>
+          <div class="table-container" style="height:auto; max-height:260px;">
+            <table class="tabela-industrial">
+              <thead><tr><th>Corrida</th><th>Bitola</th><th>Categoria</th><th>Fabricante</th><th>Recebido</th><th>NF</th><th>Peças</th></tr></thead>
+              <tbody id="rastroAcoTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div style="font-size:12px; font-weight:700; color:#94a3b8; margin-bottom:8px;">HISTÓRICO DE INSPEÇÕES DA FÁBRICA</div>
         <div class="table-container" style="height:auto; max-height:none;">
           <table class="tabela-industrial">
@@ -1991,6 +2082,20 @@
         <button class="filter-badge-btn" style="background:#475569; border-color:#475569;" onclick="fecharVoltarFase()">Cancelar</button>
         <button class="filter-badge-btn" style="background:#2563EB; border-color:#3B82F6;" onclick="confirmarVoltarFase()">⏪ Voltar a fase</button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RG DA PEÇA -->
+  <div class="modal-backdrop" id="modalRgPeca">
+    <div class="modal-card" style="max-width:860px; width:96%; max-height:92vh; overflow:auto;">
+      <div class="modal-header">
+        <span class="modal-title" id="rgTitulo">RG da peça</span>
+        <div style="display:flex; gap:8px;">
+          <button class="filter-badge-btn" onclick="imprimirRgPeca()">🖨️ Imprimir</button>
+          <button class="filter-badge-btn" style="background:#475569; border-color:#475569;" onclick="fecharRgPeca()">Fechar</button>
+        </div>
+      </div>
+      <div id="rgCorpo" style="font-size:13px; color:#cbd5e1;"></div>
     </div>
   </div>
 
@@ -4811,6 +4916,7 @@
             <button class="btn-zpl" onclick="openZplForPiece('${cod}', '${tag}', '${secao}', '${comp}', '-', '${peso}')">
               🏷️ Etiqueta
             </button>
+            <button class="btn-prancha" style="margin-top:4px;" onclick="abrirRgPeca('${cod}')">📋 RG</button>
           </td>
           <td>
             <div style="display:flex; gap:4px;">
@@ -5302,6 +5408,7 @@
         console.warn('Não foi possível carregar os laudos:', e);
       }
       renderQualidadeTable();
+      carregarRastreabilidade();
     }
 
     function renderQualidadeTable() {
@@ -5359,6 +5466,210 @@
       } catch (err) {
         msgEl.style.color = '#ef4444'; msgEl.innerText = `Erro de conexão: ${err.message}`;
       }
+    }
+
+    // ---------------- Rastreabilidade: lote de concreto, corpos de prova, aço e RG da peça ----------------
+    let rastroDados = { lotes: [], certificados: [] };
+
+    async function rastroApi(metodo, corpo) {
+      const resp = await fetch(`${FRAPPE_API_BASE}/api/method/frappe.precast_api.${metodo}`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(corpo || {}),
+      });
+      const res = await resp.json();
+      const d = res.message || {};
+      if (!d.success) throw new Error(d.error || extractApiError(res));
+      return d;
+    }
+
+    function rastroMsg(texto, cor) {
+      const el = document.getElementById('rastroMsg');
+      if (el) { el.style.color = cor || '#94a3b8'; el.textContent = texto; }
+    }
+
+    const rastroValor = id => (document.getElementById(id).value || '').trim();
+    const rastroLimpar = ids => ids.forEach(id => { document.getElementById(id).value = ''; });
+
+    async function carregarRastreabilidade() {
+      try {
+        rastroDados = await rastroApi('get_rastreabilidade');
+      } catch (e) { rastroMsg('Não foi possível carregar a rastreabilidade: ' + e.message, '#ef4444'); return; }
+      document.getElementById('rastroExigirRg').checked = !!rastroDados.exigir_rg_expedicao;
+      const lotes = rastroDados.lotes || [];
+      const opcoesLote = lotes.length ? lotes.map(l => `<option value="${escHtml(l.codigo)}">${escHtml(l.codigo)}: ${escHtml(l.status)}</option>`).join('') : '<option value="">Cadastre um lote</option>';
+      document.getElementById('rastroCpLote').innerHTML = opcoesLote;
+      document.getElementById('rastroVincLote').innerHTML = '<option value="">(lote: nenhum)</option>' + lotes.filter(l => l.status !== 'Reprovado').map(l => `<option value="${escHtml(l.codigo)}">${escHtml(l.codigo)}</option>`).join('');
+      document.getElementById('rastroVincCorridas').innerHTML = (rastroDados.certificados || []).map(c => `<option value="${escHtml(c.corrida)}">${escHtml(c.corrida)} (${c.bitola_mm} mm)</option>`).join('');
+      const obras = [...new Set((erpPieces || []).map(p => p.obra).filter(Boolean))].sort();
+      const atual = document.getElementById('rastroVincObra').value;
+      document.getElementById('rastroVincObra').innerHTML = '<option value="">Obra...</option>' + obras.map(o => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('');
+      if (obras.includes(atual)) document.getElementById('rastroVincObra').value = atual;
+      rastroListarPecas();
+
+      const cor = {Aprovado: '#14532d; color:#4ade80', Reprovado: '#7f1d1d; color:#f87171', 'Em ensaio': '#713f12; color:#fbbf24', 'Aguardando ruptura': '#334155; color:#cbd5e1'};
+      document.getElementById('rastroLotesTbody').innerHTML = lotes.map(l => `
+        <tr>
+          <td><strong style="color:#3B82F6;">${escHtml(l.codigo)}</strong></td>
+          <td>${escHtml(l.data_concretagem || '-')}</td>
+          <td>${l.fck_especificado} MPa</td>
+          <td>${escHtml(l.usina || '-')}</td>
+          <td>${l.pecas}</td>
+          <td>${(l.corpos_de_prova || []).map(c => `${c.idade_dias}d: ${c.fck_obtido} MPa`).join(' · ') || '-'}</td>
+          <td><span style="padding:2px 8px; border-radius:4px; font-weight:700; font-size:11px; background:${cor[l.status] || cor['Aguardando ruptura']}">${escHtml(l.status)}</span></td>
+        </tr>`).join('') || '<tr><td colspan="7" style="text-align:center; padding:18px; color:#64748b;">Nenhum lote cadastrado.</td></tr>';
+      document.getElementById('rastroAcoTbody').innerHTML = (rastroDados.certificados || []).map(c => `
+        <tr>
+          <td><strong style="color:#3B82F6;">${escHtml(c.corrida)}</strong></td>
+          <td>${c.bitola_mm} mm</td><td>${escHtml(c.norma || '-')}</td><td>${escHtml(c.fabricante || '-')}</td>
+          <td>${escHtml(c.data_recebimento || '-')}</td><td>${escHtml(c.nota_fiscal || '-')}</td><td>${c.pecas}</td>
+        </tr>`).join('') || '<tr><td colspan="7" style="text-align:center; padding:18px; color:#64748b;">Nenhuma corrida cadastrada.</td></tr>';
+    }
+
+    async function rastroConfigExigir(exigir) {
+      try {
+        await rastroApi('config_rastreabilidade', {exigir_rg_expedicao: exigir ? 1 : 0});
+        rastroMsg(exigir ? 'A peça só entra num romaneio com o RG completo.' : 'O RG completo deixou de ser exigido para o romaneio.', '#4ade80');
+      } catch (e) { rastroMsg(e.message, '#ef4444'); document.getElementById('rastroExigirRg').checked = !exigir; }
+    }
+
+    async function rastroRegistrarLote() {
+      try {
+        const d = await rastroApi('registrar_lote_concreto', {
+          codigo: rastroValor('rastroLoteCodigo'), fck_especificado: rastroValor('rastroLoteFck'), data_concretagem: rastroValor('rastroLoteData') || null,
+          usina: rastroValor('rastroLoteUsina'), traco: rastroValor('rastroLoteTraco'), slump_cm: rastroValor('rastroLoteSlump'),
+          temperatura_c: rastroValor('rastroLoteTemp'), volume_m3: rastroValor('rastroLoteVolume'), nota_fiscal: rastroValor('rastroLoteNf'),
+        });
+        rastroMsg(`Lote ${d.codigo} cadastrado.`, '#4ade80');
+        rastroLimpar(['rastroLoteCodigo', 'rastroLoteFck', 'rastroLoteData', 'rastroLoteUsina', 'rastroLoteTraco', 'rastroLoteSlump', 'rastroLoteTemp', 'rastroLoteVolume', 'rastroLoteNf']);
+        carregarRastreabilidade();
+      } catch (e) { rastroMsg(e.message, '#ef4444'); }
+    }
+
+    async function rastroRegistrarCp() {
+      try {
+        const d = await rastroApi('registrar_corpo_prova', {
+          lote: rastroValor('rastroCpLote'), idade_dias: rastroValor('rastroCpIdade'), fck_obtido: rastroValor('rastroCpFck'), data_ruptura: rastroValor('rastroCpData') || null,
+        });
+        rastroMsg(d.message, d.resultado === 'Reprovado' ? '#ef4444' : '#4ade80');
+        rastroLimpar(['rastroCpIdade', 'rastroCpFck', 'rastroCpData']);
+        carregarRastreabilidade();
+        if (typeof fetchPiecesFromERP === 'function') fetchPiecesFromERP();
+      } catch (e) { rastroMsg(e.message, '#ef4444'); }
+    }
+
+    async function rastroRegistrarAco() {
+      try {
+        const d = await rastroApi('registrar_certificado_aco', {
+          corrida: rastroValor('rastroAcoCorrida'), bitola_mm: rastroValor('rastroAcoBitola'), fabricante: rastroValor('rastroAcoFabricante'),
+          norma: rastroValor('rastroAcoNorma'), nota_fiscal: rastroValor('rastroAcoNf'), data_recebimento: rastroValor('rastroAcoData') || null,
+        });
+        rastroMsg(`Corrida ${d.corrida} cadastrada.`, '#4ade80');
+        rastroLimpar(['rastroAcoCorrida', 'rastroAcoBitola', 'rastroAcoFabricante', 'rastroAcoNorma', 'rastroAcoNf', 'rastroAcoData']);
+        carregarRastreabilidade();
+      } catch (e) { rastroMsg(e.message, '#ef4444'); }
+    }
+
+    function rastroListarPecas() {
+      const obra = document.getElementById('rastroVincObra').value;
+      const pecas = (erpPieces || []).filter(p => p.obra === obra);
+      const marcadas = new Set(rastroMarcadas());   // a seleção sobrevive ao recarregamento da tela
+      document.getElementById('rastroVincPecas').innerHTML = obra
+        ? (pecas.map(p => `<label><input type="checkbox" value="${escHtml(p.codigo_peca)}"${marcadas.has(p.codigo_peca) ? ' checked' : ''}> ${escHtml(p.tag || p.codigo_peca)}</label>`).join('') || '<span style="font-size:11px; color:#64748b;">Esta obra não tem peças.</span>')
+        : '<span style="font-size:11px; color:#64748b;">Escolha uma obra para ver as peças.</span>';
+    }
+
+    const rastroMarcadas = () => [...document.querySelectorAll('#rastroVincPecas input:checked')].map(i => i.value);
+    function rastroMarcarTodas() { document.querySelectorAll('#rastroVincPecas input').forEach(i => { i.checked = true; }); }
+
+    async function rastroVincularLote() {
+      const pecas = rastroMarcadas(), lote = rastroValor('rastroVincLote');
+      if (!lote) { rastroMsg('Escolha o lote que será ligado às peças.', '#ef4444'); return; }
+      try {
+        const d = await rastroApi('vincular_lote_pecas', {lote, pecas});
+        rastroMsg(`Lote ${lote} ligado a ${d.vinculadas} peça(s)` + (d.trocadas ? `; ${d.trocadas} tinham outro lote e foram trocadas.` : '.'), '#4ade80');
+        carregarRastreabilidade();
+      } catch (e) { rastroMsg(e.message, '#ef4444'); }
+    }
+
+    async function rastroVincularAco() {
+      const pecas = rastroMarcadas(), corridas = [...document.getElementById('rastroVincCorridas').selectedOptions].map(o => o.value);
+      if (!corridas.length) { rastroMsg('Marque ao menos uma corrida de aço.', '#ef4444'); return; }
+      try {
+        const d = await rastroApi('vincular_corridas_pecas', {pecas, corridas});
+        rastroMsg(`Aço ligado a ${d.vinculadas} peça(s).`, '#4ade80');
+        carregarRastreabilidade();
+      } catch (e) { rastroMsg(e.message, '#ef4444'); }
+    }
+
+    // ---- RG da peça
+    const RG_ICONE = {ok: '✅', pendente: '⏳', falha: '❌'};
+    const RG_ROTULO = {ok: 'em ordem', pendente: 'pendente', falha: 'com problema'};
+    let rgAtual = null;
+
+    const rgData = v => v ? new Date(String(v).replace(' ', 'T')).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) : '-';
+
+    function htmlDoRg(rg) {
+      const p = rg.peca;
+      const linhas = (cab) => cab.map(([k, v]) => `<tr><th>${escHtml(k)}</th><td>${escHtml(v == null || v === '' ? '-' : v)}</td></tr>`).join('');
+      const tabela = (cols, rows) => rows.length
+        ? `<table class="rg-tabela"><thead><tr>${cols.map(c => `<th>${escHtml(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${escHtml(c == null || c === '' ? '-' : c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+        : '<div style="color:#64748b; font-size:12px;">Nada registrado.</div>';
+      const lote = rg.lote;
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div><div style="font-size:20px; font-weight:800; color:#e2e8f0;">${escHtml(p.tag || p.codigo_peca)}</div>
+          <div style="color:#94a3b8;">${escHtml(p.obra || '')}${p.obra_nome ? ' · ' + escHtml(p.obra_nome) : ''}</div></div>
+          <div style="padding:6px 14px; border-radius:6px; font-weight:800; background:${rg.completo ? '#14532d; color:#4ade80' : '#713f12; color:#fbbf24'}">${rg.completo ? 'RG COMPLETO' : 'RG INCOMPLETO'}</div>
+        </div>
+        <table class="rg-tabela" style="margin-top:10px;"><tbody>
+          ${linhas([['Código', p.codigo_peca], ['Produto', p.produto], ['Seção', p.secao ? p.secao + ' cm' : ''], ['Comprimento', p.comprimento_m ? p.comprimento_m + ' m' : ''],
+                    ['Volume', p.volume_m3 ? p.volume_m3 + ' m³' : ''], ['Peso', p.peso_kg ? Math.round(p.peso_kg) + ' kg' : ''], ['Aço da prancha', p.aco_kg ? p.aco_kg + ' kg' : ''],
+                    ['fck', p.fck], ['Fase atual', p.fase], ['Folha da prancha', p.folha_prancha]])}
+        </tbody></table>
+        <div class="rg-bloco-titulo">Conferência da documentação</div>
+        <div class="rg-itens">${rg.conferencias.map(c => `<div class="rg-item ${c.estado}"><span>${RG_ICONE[c.estado]}</span><strong>${escHtml(c.item)}</strong><span style="color:#94a3b8;">${escHtml(c.detalhe)} (${RG_ROTULO[c.estado]})</span></div>`).join('')}</div>
+        <div class="rg-bloco-titulo">Concreto</div>
+        ${lote ? tabela(['Lote', 'Concretagem', 'Usina', 'Traço', 'fck', 'Slump', 'Temp.', 'NF', 'Situação'],
+            [[lote.codigo, lote.data_concretagem, lote.usina, lote.traco, lote.fck_especificado + ' MPa', lote.slump_cm, lote.temperatura_c, lote.nota_fiscal, rg.status_do_lote]])
+          + '<div style="height:8px;"></div>' + tabela(['Idade', 'Resistência', 'Resultado', 'Ruptura', 'Responsável'], (lote.corpos_de_prova || []).map(c => [c.idade_dias + ' dias', c.fck_obtido + ' MPa', c.resultado, c.data_ruptura, c.responsavel]))
+          : '<div style="color:#64748b; font-size:12px;">Nenhum lote ligado à peça.</div>'}
+        <div class="rg-bloco-titulo">Aço (certificados)</div>
+        ${tabela(['Corrida', 'Bitola', 'Categoria', 'Fabricante', 'Recebido', 'NF'], rg.certificados.map(c => [c.corrida, c.bitola_mm + ' mm', c.norma, c.fabricante, c.data_recebimento, c.nota_fiscal]))}
+        <div class="rg-bloco-titulo">Fabricação (quem e quando)</div>
+        ${tabela(['Fase', 'Data e hora', 'Quem', 'Forma / pista'], rg.fases.map(f => [f.fase, rgData(f.data_hora), f.usuario, f.forma_pista]))}
+        <div class="rg-bloco-titulo">Inspeções de qualidade</div>
+        ${tabela(['Etapa', 'Resultado', 'Inspetor', 'Data e hora', 'Parecer'], rg.inspecoes.map(i => [i.etapa, i.aprovado ? 'Aprovado' : 'Reprovado', i.inspetor, rgData(i.data_inspecao), i.observacoes]))}
+        <div class="rg-bloco-titulo">Não conformidades</div>
+        ${tabela(['Descrição', 'Situação', 'Aberta em', 'Por'], rg.nao_conformidades.map(n => [n.descricao, n.status, rgData(n.data_abertura), n.aberto_por]))}
+        <div class="rg-bloco-titulo">Expedição</div>
+        ${rg.romaneio ? tabela(['Romaneio', 'Caminhão', 'Motorista', 'Data', 'Situação'], [[rg.romaneio.codigo, rg.romaneio.caminhao, rg.romaneio.motorista, rg.romaneio.data_expedicao, rg.romaneio.status]]) : '<div style="color:#64748b; font-size:12px;">Ainda não expedida.</div>'}
+        <div style="margin-top:14px; font-size:11px; color:#64748b;">Emitido em ${rgData(rg.emitido_em)}</div>`;
+    }
+
+    async function abrirRgPeca(cod) {
+      document.getElementById('rgTitulo').textContent = 'RG da peça';
+      document.getElementById('rgCorpo').innerHTML = '<div style="padding:30px; text-align:center; color:#94a3b8;">Montando o RG...</div>';
+      document.getElementById('modalRgPeca').classList.add('active');
+      try {
+        rgAtual = await rastroApi('get_rg_peca', {codigo_peca: cod});
+        document.getElementById('rgTitulo').textContent = `RG da peça ${rgAtual.peca.tag || rgAtual.peca.codigo_peca}`;
+        document.getElementById('rgCorpo').innerHTML = htmlDoRg(rgAtual);
+      } catch (e) {
+        rgAtual = null;
+        document.getElementById('rgCorpo').innerHTML = `<div style="padding:24px; color:#f87171;">${escHtml(e.message)}</div>`;
+      }
+    }
+
+    function fecharRgPeca() { document.getElementById('modalRgPeca').classList.remove('active'); }
+
+    const CSS_RG = `body{font-family:Inter,Arial,sans-serif;color:#111;margin:14mm;font-size:11px}
+      .rg-tabela{width:100%;border-collapse:collapse;margin-bottom:4px}.rg-tabela th,.rg-tabela td{text-align:left;padding:4px 6px;border-bottom:1px solid #bbb}
+      .rg-bloco-titulo{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin:12px 0 4px;color:#333}
+      .rg-itens{display:grid;gap:4px;margin:6px 0}.rg-item{display:flex;gap:8px;padding:4px 8px;border:1px solid #bbb;border-radius:4px}
+      div{color:#111!important}`;
+
+    function imprimirRgPeca() {
+      if (!rgAtual) return;
+      imprimirHtml(`RG ${rgAtual.peca.tag || rgAtual.peca.codigo_peca}`, `<h2>RG da peça ${escHtml(rgAtual.peca.tag || rgAtual.peca.codigo_peca)}</h2>` + htmlDoRg(rgAtual), CSS_RG);
     }
   </script>
 </body>

@@ -1166,6 +1166,63 @@ ROSTO_OPERADOR = {
 }
 
 
+_PERMISSOES_BASE = [{"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1}]
+
+LOTE_CONCRETO = {
+    "module": "Custom", "naming_rule": "By fieldname", "autoname": "field:codigo", "issingle": 0,
+    "fields": [
+        {"fieldname": "codigo", "label": "Código do lote", "fieldtype": "Data", "reqd": 1, "unique": 1, "in_list_view": 1},
+        {"fieldname": "data_concretagem", "label": "Data da concretagem", "fieldtype": "Date", "in_list_view": 1},
+        {"fieldname": "usina", "label": "Usina / fornecedor", "fieldtype": "Data"},
+        {"fieldname": "traco", "label": "Traço", "fieldtype": "Data"},
+        {"fieldname": "fck_especificado", "label": "fck especificado (MPa)", "fieldtype": "Float", "reqd": 1},
+        {"fieldname": "slump_cm", "label": "Slump (cm)", "fieldtype": "Float"},
+        {"fieldname": "temperatura_c", "label": "Temperatura (°C)", "fieldtype": "Float"},
+        {"fieldname": "volume_m3", "label": "Volume (m³)", "fieldtype": "Float"},
+        {"fieldname": "nota_fiscal", "label": "Nota fiscal / ticket", "fieldtype": "Data"},
+        {"fieldname": "observacoes", "label": "Observações", "fieldtype": "Small Text"},
+        {"fieldname": "registrado_por", "label": "Registrado por", "fieldtype": "Data"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
+CORPO_PROVA = {
+    "module": "Custom", "naming_rule": "Autoincrement", "autoname": None, "issingle": 0,
+    "fields": [
+        {"fieldname": "lote", "label": "Lote", "fieldtype": "Link", "options": "Lote Concreto", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "idade_dias", "label": "Idade (dias)", "fieldtype": "Int", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "data_ruptura", "label": "Data da ruptura", "fieldtype": "Date"},
+        {"fieldname": "carga_kn", "label": "Carga (kN)", "fieldtype": "Float"},
+        {"fieldname": "fck_obtido", "label": "fck obtido (MPa)", "fieldtype": "Float", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "fck_especificado", "label": "fck especificado (MPa)", "fieldtype": "Float"},
+        {"fieldname": "resultado", "label": "Resultado", "fieldtype": "Select", "options": "Parcial\nAprovado\nReprovado", "in_list_view": 1},
+        {"fieldname": "responsavel", "label": "Responsável", "fieldtype": "Data"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
+CERTIFICADO_ACO = {
+    "module": "Custom", "naming_rule": "By fieldname", "autoname": "field:corrida", "issingle": 0,
+    "fields": [
+        {"fieldname": "corrida", "label": "Corrida / lote do aço", "fieldtype": "Data", "reqd": 1, "unique": 1, "in_list_view": 1},
+        {"fieldname": "bitola_mm", "label": "Bitola (mm)", "fieldtype": "Float", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "fabricante", "label": "Fabricante", "fieldtype": "Data"},
+        {"fieldname": "norma", "label": "Categoria / norma", "fieldtype": "Data", "default": "CA-50"},
+        {"fieldname": "data_recebimento", "label": "Data de recebimento", "fieldtype": "Date"},
+        {"fieldname": "nota_fiscal", "label": "Nota fiscal", "fieldtype": "Data"},
+        {"fieldname": "certificado_anexo", "label": "Certificado (arquivo)", "fieldtype": "Data"},
+        {"fieldname": "registrado_por", "label": "Registrado por", "fieldtype": "Data"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
+# Rastreabilidade de cada peça: de qual lote de concreto e de quais corridas de aço ela saiu.
+CAMPOS_PECA_RASTRO = [
+    {"fieldname": "lote_concreto", "label": "Lote do concreto", "fieldtype": "Link", "options": "Lote Concreto"},
+    {"fieldname": "corridas_aco", "label": "Corridas do aço (lista)", "fieldtype": "Small Text"},
+]
+
+
 # Dados que a prancha de detalhamento traz de cada peça (lista de ferros, aço real, folha).
 CAMPOS_PECA_PRANCHA = [
     {"fieldname": "peso_aco_kg", "label": "Aço da prancha (kg)", "fieldtype": "Float", "precision": "3"},
@@ -1180,7 +1237,7 @@ CAMPOS_PECA_PRANCHA = [
 def garantir_campos_peca():
     """Campos novos da peça (Custom Field), sem recriar o DocType. Idempotente."""
     from frappe.custom.doctype.custom_field.custom_field import create_custom_field
-    for campo in CAMPOS_PECA_PRANCHA:
+    for campo in CAMPOS_PECA_PRANCHA + CAMPOS_PECA_RASTRO:
         if not frappe.db.exists("Custom Field", {"dt": "Peca Pre-Moldada", "fieldname": campo["fieldname"]}) and                 not frappe.get_meta("Peca Pre-Moldada").has_field(campo["fieldname"]):
             create_custom_field("Peca Pre-Moldada", {**campo, "insert_after": "aviso_engenharia"})
 
@@ -1194,6 +1251,9 @@ def garantir_doctypes_novos():
             frappe.get_doc({"doctype": "Role", "role_name": papel, "desk_access": 0}).insert(ignore_permissions=True)
     _criar_doctype("Diario Obra", DIARIO_OBRA)
     _criar_doctype("Rosto Operador", ROSTO_OPERADOR)
+    _criar_doctype("Lote Concreto", LOTE_CONCRETO)
+    _criar_doctype("Corpo Prova", CORPO_PROVA)
+    _criar_doctype("Certificado Aco", CERTIFICADO_ACO)
     garantir_campos_peca()
     frappe.db.commit()
     frappe.clear_cache()
