@@ -1,0 +1,18 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');
+FILE_NAME('','2026-09-30T08:39:50',(''),(''),'IfcOpenShell 0.8.5-1c5b825','IfcOpenShell 0.8.5-1c5b825','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+#1=IFCPROJECT('1lSVTdVPT51vhDeNuXFfB4',$,'Obra Teste BIM Eberick/Revit',$,$,$,$,$,$);
+#2=IFCPERSON('ENG','Engenheiro',$,$,$,$,$,$);
+#3=IFCORGANIZATION($,'Cliente Construtora',$,$,$);
+#4=IFCPERSONANDORGANIZATION(#2,#3,$);
+#5=IFCOWNERHISTORY(#4,$,$,$,$,$,$,$);
+#6=IFCCOLUMN('0mirTAOoLFiwEjkZ1AgrlM',$,'P1',$,$,$,$,'P1',$);
+#7=IFCCOLUMN('0i2Vsq1if0RgUyDI7zDXjK',$,'P2',$,$,$,$,'P2',$);
+#8=IFCBEAM('0sx4ToDAD9p9zPM8xOuEyC',$,'V101',$,$,$,$,'V101',$);
+#9=IFCFOOTING('299$9aqArCbwsrJgVeJ5y7',$,'B1',$,$,$,$,'B1',$);
+ENDSEC;
+END-ISO-10303-21;
