@@ -47,7 +47,7 @@ def test_endpoints(url: str, callback: Any, frappe_site: str):
 
 
 @pytest.mark.skipif(
-    os.environ["FRAPPE_VERSION"][0:3] == "v12", reason="v12 doesn't have the asset"
+    os.environ.get("FRAPPE_VERSION", "")[0:3] == "v12", reason="v12 doesn't have the asset"
 )
 def test_assets_endpoint(frappe_site: str):
     check_url_content(

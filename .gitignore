@@ -1,5 +1,6 @@
 # Environment Variables
 .env
+precast_service_credentials.env
 
 # mounted volume
 sites
@@ -32,3 +33,11 @@ node_modules
 # VitePress
 **/.vitepress/dist
 **/.vitepress/cache
+
+# Precast: arquivos de teste e imagens geradas
+pranchas_bundle/
+prancha_VM03.pdf
+print_VM03.png
+sample_v1_1.png
+test_vm03_*.pdf
+test_vm03_*.png
