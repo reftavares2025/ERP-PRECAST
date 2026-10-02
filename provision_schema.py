@@ -1232,10 +1232,30 @@ REVISAO_PROJETO = {
     "permissions": _PERMISSOES_BASE,
 }
 
+PLANO_CORTE = {
+    "module": "Custom", "naming_rule": "Autoincrement", "autoname": None, "issingle": 0,
+    "fields": [
+        {"fieldname": "obra", "label": "Obra", "fieldtype": "Data", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "numero", "label": "Número", "fieldtype": "Int", "in_list_view": 1},
+        {"fieldname": "status", "label": "Situação", "fieldtype": "Select", "options": "Gerado\nEm corte\nConcluído\nCancelado", "default": "Gerado", "in_list_view": 1},
+        {"fieldname": "data_hora", "label": "Data e hora", "fieldtype": "Datetime"},
+        {"fieldname": "usuario", "label": "Quem gerou", "fieldtype": "Data"},
+        {"fieldname": "barra_m", "label": "Barra (m)", "fieldtype": "Float"},
+        {"fieldname": "barras", "label": "Barras", "fieldtype": "Int"},
+        {"fieldname": "perda_pct", "label": "Perda (%)", "fieldtype": "Float"},
+        {"fieldname": "aco_comprado_kg", "label": "Aço em barras (kg)", "fieldtype": "Float"},
+        {"fieldname": "desatualizado", "label": "Desatualizado por revisão", "fieldtype": "Check", "default": "0"},
+        {"fieldname": "pecas", "label": "Peças (JSON)", "fieldtype": "Long Text"},
+        {"fieldname": "resultado", "label": "Plano (JSON)", "fieldtype": "Long Text"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
 # Rastreabilidade de cada peça: de qual lote de concreto e de quais corridas de aço ela saiu.
 CAMPOS_PECA_RASTRO = [
     {"fieldname": "lote_concreto", "label": "Lote do concreto", "fieldtype": "Link", "options": "Lote Concreto"},
     {"fieldname": "corridas_aco", "label": "Corridas do aço (lista)", "fieldtype": "Small Text"},
+    {"fieldname": "plano_corte", "label": "Plano de corte do aço", "fieldtype": "Data"},
 ]
 
 
@@ -1271,6 +1291,7 @@ def garantir_doctypes_novos():
     _criar_doctype("Corpo Prova", CORPO_PROVA)
     _criar_doctype("Certificado Aco", CERTIFICADO_ACO)
     _criar_doctype("Revisao Projeto", REVISAO_PROJETO)
+    _criar_doctype("Plano Corte", PLANO_CORTE)
     garantir_campos_peca()
     frappe.db.commit()
     frappe.clear_cache()

@@ -849,6 +849,48 @@ def config_rastreabilidade(exigir_rg_expedicao=None):
     return {"success": True, "exigir_rg_expedicao": exigir_rg_para_expedir()}
 
 
+# ---- Corte e dobra do aço (precast_corte.py)
+
+@endpoint()
+def config_corte(barra_m=None, traspasse_diametros=None, retalho_minimo_m=None):
+    from frappe.precast_corte import configuracao
+    if any(v not in (None, "") for v in (barra_m, traspasse_diametros, retalho_minimo_m)):
+        _exigir_papel("Produção", "Direção")
+    return configuracao(barra_m, traspasse_diametros, retalho_minimo_m)
+
+
+@endpoint()
+def pecas_para_corte(obra):
+    from frappe.precast_corte import pecas_para_corte as _pecas
+    return {"success": True, "pecas": _pecas(obra)}
+
+
+@endpoint()
+def gerar_plano_corte(obra, pecas=None, barra_m=None):
+    _exigir_papel("Produção", "Direção")
+    from frappe.precast_corte import gerar
+    return gerar(obra, pecas, barra_m)
+
+
+@endpoint()
+def listar_planos_corte(obra):
+    from frappe.precast_corte import listar
+    return {"success": True, "planos": listar(obra)}
+
+
+@endpoint()
+def get_plano_corte(plano):
+    from frappe.precast_corte import abrir
+    return abrir(plano)
+
+
+@endpoint()
+def mudar_status_plano_corte(plano, status):
+    _exigir_papel("Produção", "Direção")
+    from frappe.precast_corte import mudar_status
+    return mudar_status(plano, status)
+
+
 @endpoint()
 def get_transportadoras():
     return {"success": True, "transportadoras": frappe.get_all('Transportadora',
@@ -2414,8 +2456,9 @@ def delete_obra(codigo_obra):
         frappe.delete_doc('Peca Pre-Moldada', p.name, ignore_permissions=True, force=True)
         deleted_pieces += 1
         
-    for nome in frappe.get_all("Revisao Projeto", filters={"obra": codigo_obra}, pluck="name"):
-        frappe.delete_doc("Revisao Projeto", nome, ignore_permissions=True, force=True)
+    for doctype in ("Revisao Projeto", "Plano Corte"):
+        for nome in frappe.get_all(doctype, filters={"obra": codigo_obra}, pluck="name"):
+            frappe.delete_doc(doctype, nome, ignore_permissions=True, force=True)
     frappe.defaults.clear_default(key=f"portal_cfg:{codigo_obra}", parent="__default")  # o que o cliente via e o link não passam para uma obra nova de mesmo código
     # 2. Delete the Obra document itself
     if frappe.db.exists('Obra', codigo_obra):
@@ -3060,17 +3103,9 @@ def otimizar_corte_aco(comprimentos_necessarios, comprimento_barra=12.0):
     if any(c > comprimento_barra for c in cortes):
         return {"success": False, "error": f"Existe corte maior que a barra de {comprimento_barra}m — não é possível atender."}
 
-    barras = []  # cada item: {"usado": float, "cortes": [..]}
-    for corte in cortes:
-        alocado = False
-        for b in barras:
-            if b["usado"] + corte <= comprimento_barra:
-                b["usado"] += corte
-                b["cortes"].append(corte)
-                alocado = True
-                break
-        if not alocado:
-            barras.append({"usado": corte, "cortes": [corte]})
+    from frappe.precast_corte import empacotar
+    barras = [{"usado": b["usado"], "cortes": [c for _, c in b["cortes"]]}
+              for b in empacotar([(i, c) for i, c in enumerate(cortes)], comprimento_barra)]
 
     total_consumido = len(barras) * comprimento_barra
     total_usado = sum(b["usado"] for b in barras)

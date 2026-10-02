@@ -1361,6 +1361,39 @@
       </div>
 
       <!-- ========================================== -->
+      <!-- VIEW: FABRICAÇÃO - PLANO DE CORTE DO AÇO   -->
+      <!-- ========================================== -->
+      <div id="viewPlanoCorte" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+        <div class="filter-panel" style="border-top: 2px solid var(--c-fabricacao); flex-wrap:wrap;">
+          <div class="filter-group"><span class="filter-label">Obra</span>
+            <select class="filter-select" id="corteObra" onchange="corteTrocouObra(false)"></select></div>
+          <div class="filter-group"><span class="filter-label">Barra (m)</span>
+            <input class="filter-input" id="corteBarra" type="number" step="0.5" style="width:90px;"></div>
+          <div class="filter-group"><span class="filter-label">Traspasse (× ø)</span>
+            <input class="filter-input" id="corteTraspasse" type="number" step="1" style="width:90px;"></div>
+          <div class="filter-group"><span class="filter-label">Retalho mínimo (m)</span>
+            <input class="filter-input" id="corteRetalho" type="number" step="0.1" style="width:90px;"></div>
+          <button class="filter-badge-btn" onclick="corteSalvarConfig()">Salvar parâmetros</button>
+        </div>
+        <div style="padding:16px; display:grid; gap:16px;">
+          <div class="rastro-card">
+            <div class="rastro-titulo">1. Peças em Corte e Dobra (o plano usa a lista de ferros da prancha de cada uma)</div>
+            <div id="cortePecas" class="rastro-pecas" style="max-height:200px;"></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+              <button class="filter-badge-btn" onclick="corteMarcarTodas()">Marcar todas livres</button>
+              <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981;" onclick="corteGerar()">✂️ Gerar plano de corte</button>
+            </div>
+            <div id="corteMsg" style="font-size:12px; margin-top:8px;"></div>
+          </div>
+          <div id="corteResultado"></div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">Planos desta obra</div>
+            <div id="corteHistorico"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
       <!-- VIEW: LOGÍSTICA - ROMANEIO DE CARGA        -->
       <!-- ========================================== -->
       <div id="viewRomaneio" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
@@ -2504,6 +2537,7 @@
         <div class="subtab active" onclick="setSubtabFabricacao(this, 'lista')">📋 Lista da Fabricação</div>
         <div class="subtab" onclick="setSubtabFabricacao(this, 'planejamento')">🏭 Pistas & Formas</div>
         <div class="subtab" onclick="setSubtabFabricacao(this, 'armacao')">🔩 Estoque de Armação</div>
+        <div class="subtab" onclick="setSubtabFabricacao(this, 'corte')">✂️ Plano de Corte</div>
         <div class="subtab" onclick="abrirEtiquetasLote()">🏷️ Etiquetas ZPL</div>
       `;
     }
@@ -2551,6 +2585,10 @@
         document.getElementById('viewEstoqueArmacao').classList.remove('hidden');
         document.getElementById('screenTitle').innerText = 'Estoque de Armação — Corte & Dobra';
         loadEstoqueArmacao();
+      } else if (screen === 'corte') {
+        document.getElementById('viewPlanoCorte').classList.remove('hidden');
+        document.getElementById('screenTitle').innerText = 'Plano de Corte e Dobra do Aço';
+        carregarCorte();
       } else if (screen === 'romaneio') {
         document.getElementById('viewRomaneio').classList.remove('hidden');
         document.getElementById('screenTitle').innerText = 'Romaneio de Carga — Expedição';
@@ -3253,6 +3291,7 @@
       document.getElementById('viewCliente').classList.add('hidden');
       document.getElementById('viewFiscal').classList.add('hidden');
       document.getElementById('viewQualidade').classList.add('hidden');
+      document.getElementById('viewPlanoCorte').classList.add('hidden');
     }
 
     function clearActiveTabs() {
@@ -5737,6 +5776,128 @@
       } catch (e) {
         document.getElementById('revisoesCorpo').innerHTML = `<div style="padding:24px; color:#f87171;">${escHtml(e.message)}</div>`;
       }
+    }
+
+    // ---------------- Plano de corte e dobra do aço ----------------
+    let corteAtual = null;
+
+    const corteM = v => Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const corteKg = v => Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+    function corteMsg(texto, cor) { const el = document.getElementById('corteMsg'); if (el) { el.style.color = cor || '#94a3b8'; el.textContent = texto; } }
+
+    async function carregarCorte() {
+      if (!erpPieces.length) await fetchPiecesFromERP();
+      const obras = [...new Set((erpPieces || []).map(p => p.obra).filter(Boolean))].sort();
+      const sel = document.getElementById('corteObra'), atual = sel.value;
+      sel.innerHTML = obras.map(o => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('') || '<option value="">Nenhuma obra</option>';
+      if (obras.includes(atual)) sel.value = atual;
+      try {
+        const c = await rastroApi('config_corte');
+        document.getElementById('corteBarra').value = c.barra_m;
+        document.getElementById('corteTraspasse').value = c.traspasse_diametros;
+        document.getElementById('corteRetalho').value = c.retalho_minimo_m;
+      } catch (e) { corteMsg(e.message, '#ef4444'); }
+      corteTrocouObra();
+    }
+
+    async function corteSalvarConfig() {
+      try {
+        await rastroApi('config_corte', {barra_m: document.getElementById('corteBarra').value, traspasse_diametros: document.getElementById('corteTraspasse').value, retalho_minimo_m: document.getElementById('corteRetalho').value});
+        corteMsg('Parâmetros salvos. Valem para os próximos planos.', '#4ade80');
+      } catch (e) { corteMsg(e.message, '#ef4444'); }
+    }
+
+    async function corteTrocouObra(manterPlano) {
+      const obra = document.getElementById('corteObra').value;
+      if (!manterPlano) { document.getElementById('corteResultado').innerHTML = ''; corteAtual = null; }
+      if (!obra) { document.getElementById('cortePecas').innerHTML = ''; document.getElementById('corteHistorico').innerHTML = ''; return; }
+      try {
+        const [pecas, planos] = await Promise.all([rastroApi('pecas_para_corte', {obra}), rastroApi('listar_planos_corte', {obra})]);
+        document.getElementById('cortePecas').innerHTML = pecas.pecas.map(p => p.plano
+          ? `<span style="font-size:11px; background:#1e293b; border:1px solid #334155; border-radius:4px; padding:3px 8px; color:#64748b;" title="Já está no plano ${escHtml(p.plano)}">${escHtml(p.tag)} · plano ${escHtml(p.plano)}</span>`
+          : `<label title="${p.ferros} posição(ões) de ferro"><input type="checkbox" value="${escHtml(p.codigo_peca)}"${p.ferros ? '' : ' disabled'}> ${escHtml(p.tag)}${p.ferros ? '' : ' (sem lista de ferros)'}</label>`).join('')
+          || '<span style="font-size:12px; color:#64748b;">Nenhuma peça desta obra está em Corte e Dobra.</span>';
+        document.getElementById('corteHistorico').innerHTML = planos.planos.length ? `<table class="rg-tabela"><thead><tr><th>Plano</th><th>Situação</th><th>Barras</th><th>Perda</th><th>Aço em barras</th><th>Gerado</th><th></th></tr></thead><tbody>${planos.planos.map(pl => `
+          <tr><td>#${pl.numero}${pl.desatualizado ? ' <span style="color:#fbbf24;" title="Uma revisão mudou a lista de ferros de uma peça deste plano">⚠️ desatualizado</span>' : ''}</td><td>${escHtml(pl.status)}</td><td>${pl.barras} de ${pl.barra_m} m</td><td>${pl.perda_pct}%</td><td>${corteKg(pl.aco_comprado_kg)} kg</td>
+          <td>${escHtml(rgData(pl.data_hora))} · ${escHtml(pl.usuario || '')}</td><td><button class="btn-prancha" onclick="corteAbrir('${pl.name}')">Abrir</button></td></tr>`).join('')}</tbody></table>` : '<span style="font-size:12px; color:#64748b;">Nenhum plano gerado.</span>';
+      } catch (e) { corteMsg(e.message, '#ef4444'); }
+    }
+
+    function corteMarcarTodas() { document.querySelectorAll('#cortePecas input:not(:disabled)').forEach(i => { i.checked = true; }); }
+
+    async function corteGerar() {
+      const obra = document.getElementById('corteObra').value;
+      const marcadas = [...document.querySelectorAll('#cortePecas input:checked')].map(i => i.value);
+      if (!marcadas.length) { corteMsg('Marque as peças que entram no plano.', '#ef4444'); return; }
+      corteMsg('Calculando o plano...');
+      try {
+        await corteSalvarConfig();
+        const d = await rastroApi('gerar_plano_corte', {obra, pecas: marcadas, barra_m: document.getElementById('corteBarra').value});
+        corteMsg(`Plano #${d.numero} gerado: ${d.resumo.barras} barras, perda de ${d.resumo.perda_pct}%.`, '#4ade80');
+        corteAtual = {...d, obra, status: 'Gerado', desatualizado: false};
+        await corteTrocouObra(true);
+        corteMostrar();
+      } catch (e) { corteMsg(e.message, '#ef4444'); }
+    }
+
+    async function corteAbrir(nome) {
+      try { corteAtual = await rastroApi('get_plano_corte', {plano: nome}); corteMostrar(); }
+      catch (e) { corteMsg(e.message, '#ef4444'); }
+    }
+
+    function corteMostrar() {
+      document.getElementById('corteResultado').innerHTML = htmlPlanoCorte(corteAtual);
+      document.getElementById('corteResultado').scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
+
+    function htmlPlanoCorte(pl) {
+      const r = pl.resumo, kpi = (n, t) => `<div class="meta-stat"><span class="meta-stat-label">${t}</span><span class="meta-stat-val highlight">${n}</span></div>`;
+      const compactar = cortes => { const m = {}; cortes.forEach(c => { m[c] = (m[c] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[0] - a[0]).map(([c, n]) => `${n} × ${corteM(c)} m`).join(' + '); };
+      const acoes = pl.status === 'Gerado' ? `<button class="filter-badge-btn" onclick="corteStatus('Em corte')">▶ Iniciar corte</button><button class="filter-badge-btn" style="background:#10B981; border-color:#10B981;" onclick="corteStatus('Concluído')">✓ Concluir</button><button class="filter-badge-btn" style="background:#7f1d1d; border-color:#ef4444;" onclick="corteStatus('Cancelado')">Cancelar</button>`
+        : pl.status === 'Em corte' ? `<button class="filter-badge-btn" style="background:#10B981; border-color:#10B981;" onclick="corteStatus('Concluído')">✓ Concluir</button><button class="filter-badge-btn" style="background:#7f1d1d; border-color:#ef4444;" onclick="corteStatus('Cancelado')">Cancelar</button>` : '';
+      return `<div class="rastro-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+          <div class="rastro-titulo" style="margin:0;">Plano #${pl.numero} · ${escHtml(pl.obra || '')} · ${escHtml(pl.status)}</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">${acoes}<button class="filter-badge-btn" onclick="corteImprimir()">🖨️ Imprimir</button><button class="filter-badge-btn" onclick="corteCsv()">⬇️ Planilha (CSV)</button></div>
+        </div>
+        ${pl.desatualizado ? '<div style="background:#713f12; color:#fde68a; padding:8px 12px; border-radius:6px; margin-bottom:10px; font-size:13px;">⚠️ Uma revisão do projeto mudou a lista de ferros de peças deste plano. Cancele e gere o plano de novo antes de cortar.</div>' : ''}
+        <div class="meta-summary-card" style="margin:0 0 12px 0;">
+          ${kpi(r.barras, `Barras de ${pl.parametros.barra_m} m`)}${kpi(corteKg(r.aco_necessario_kg) + ' kg', 'Aço necessário')}${kpi(corteKg(r.aco_comprado_kg) + ' kg', 'Aço em barras')}${kpi(r.perda_pct + '%', 'Perda')}${kpi(corteM(r.sobra_aproveitavel_m) + ' m', 'Retalhos aproveitáveis')}
+        </div>
+        ${(pl.avisos || []).map(a => `<div style="font-size:12px; color:#fbbf24; margin-bottom:6px;">⚠️ ${escHtml(a)}</div>`).join('')}
+        ${pl.por_bitola.map(b => `<div class="rg-bloco-titulo">Ø ${b.bitola_mm} mm · ${b.barras} barra(s) · aproveitamento ${b.aproveitamento_pct}%${b.emendas ? ` · ${b.emendas} emenda(s)` : ''}</div>
+          <table class="rg-tabela"><thead><tr><th style="width:80px;">Barras</th><th>Cortes de cada barra</th><th style="width:110px;">Sobra</th></tr></thead><tbody>${b.padroes.map(pt => `<tr><td><strong>${pt.vezes}×</strong></td><td>${compactar(pt.cortes)}</td><td>${corteM(pt.sobra_m)} m</td></tr>`).join('')}</tbody></table>`).join('')}
+        <div class="rg-bloco-titulo">Lista de corte por peça</div>
+        <table class="rg-tabela"><thead><tr><th>Peça</th><th>Posição</th><th>Ø (mm)</th><th>Quantidade</th><th>Comprimento (m)</th></tr></thead><tbody>${pl.lista_de_corte.map(l => `<tr><td>${escHtml(l.tag)}</td><td>${escHtml(l.posicao)}</td><td>${l.bitola_mm}</td><td>${l.quantidade}</td><td>${corteM(l.comp_m)}</td></tr>`).join('')}</tbody></table>
+      </div>`;
+    }
+
+    async function corteStatus(status) {
+      if (!corteAtual) return;
+      if (status === 'Cancelado' && !confirm('Cancelar este plano? As peças ficam livres para um novo plano.')) return;
+      try {
+        await rastroApi('mudar_status_plano_corte', {plano: corteAtual.plano, status});
+        corteAtual.status = status;
+        await corteTrocouObra(true);
+        corteMostrar();
+        corteMsg(`Plano #${corteAtual.numero}: ${status.toLowerCase()}.`, '#4ade80');
+      } catch (e) { corteMsg(e.message, '#ef4444'); }
+    }
+
+    function corteImprimir() {
+      if (!corteAtual) return;
+      const css = CSS_RG + ' .meta-summary-card{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0} .meta-stat{display:flex;flex-direction:column} button,.filter-badge-btn{display:none}';
+      imprimirHtml(`Plano de corte ${corteAtual.numero}`, `<h2>Plano de corte #${corteAtual.numero} · obra ${escHtml(corteAtual.obra || '')}</h2>` + htmlPlanoCorte(corteAtual), css);
+    }
+
+    function corteCsv() {
+      if (!corteAtual) return;
+      const linhas = [['bitola_mm', 'barra', 'peca', 'posicao', 'comprimento_mm']].concat(corteAtual.barras.map(b => [b.bitola_mm, b.barra, b.tag, b.posicao, Math.round(b.comp_m * 1000)]));
+      const csv = '\ufeff' + linhas.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8'}));
+      a.download = `plano-corte-${corteAtual.obra}-${corteAtual.numero}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
     }
   </script>
 </body>

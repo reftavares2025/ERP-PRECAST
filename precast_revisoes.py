@@ -135,9 +135,14 @@ def _texto_aviso(revisao, item):
 
 def aplicar(cod_obra, revisao, arquivo, modo, diff):
     """Depois da gravação: avisa as peças que já andaram e registra a revisão no histórico da obra."""
+    from frappe.precast_corte import marcar_desatualizado
     for item in diff["alteradas"]:
-        if item["impacto"]["nivel"] != "nenhum":
-            frappe.db.set_value("Peca Pre-Moldada", item["codigo"], "aviso_engenharia", _texto_aviso(revisao, item)[:900], update_modified=False)
+        nota = ""
+        if {m["campo"] for m in item["mudancas"]} & {"aco", "ferros"}:
+            plano = marcar_desatualizado(item["codigo"])
+            nota = f" O plano de corte {plano} usa a lista de ferros antiga: gere o plano de novo." if plano else ""
+        if item["impacto"]["nivel"] != "nenhum" or nota:
+            frappe.db.set_value("Peca Pre-Moldada", item["codigo"], "aviso_engenharia", (_texto_aviso(revisao, item) + nota)[:900], update_modified=False)
     numero = frappe.db.count("Revisao Projeto", {"obra": cod_obra}) + 1
     registro = {"alteradas": diff["alteradas"][:200], "novas": diff["novas"][:200], "ausentes": diff["ausentes"][:200]}
     frappe.get_doc({
