@@ -53,8 +53,8 @@ def desafio(sessao, descritor, espera=3.3, mudar=None):
     return {"token": d["token"], "quadros": quadros}
 
 
-def entrar(sessao, descritor, nome=None, setor=None, **kw):
-    return chamar(sessao, "rosto_entrar", descritor=json.dumps(descritor), nome=nome, setor=setor, desafio=json.dumps(desafio(sessao, descritor, **kw)))
+def entrar(sessao, descritor, nome=None, setor=None, consentimento=True, **kw):
+    return chamar(sessao, "rosto_entrar", descritor=json.dumps(descritor), nome=nome, setor=setor, consentimento=1 if consentimento else 0, desafio=json.dumps(desafio(sessao, descritor, **kw)))
 
 
 chamar(adm, "gerir_rosto", acao="zerar_tentativas")
@@ -157,6 +157,27 @@ chamar(adm, "gerir_rosto", usuario=ana["usuario"], acao="bloquear")
 r = entrar(requests.Session(), parecido(A))
 ok("rosto bloqueado não entra (vira rosto novo)", r.get("precisa_cadastro") or not r.get("success"))
 chamar(adm, "gerir_rosto", usuario=ana["usuario"], acao="liberar")
+
+print("[LGPD: termo, consentimento e direitos do titular]")
+termo = requests.post(f"{URL}/api/method/frappe.precast_api.termo_lgpd", json={}).json()["message"]
+ok("o termo é público (aparece antes do cadastro) e diz a finalidade e os direitos", termo["success"] and "reconhecimento facial" in termo["texto"] and "exclusão" in termo["texto"] and termo["versao"], termo["versao"])
+r = entrar(requests.Session(), rosto(), "Teste Rosto Dani", "Cura", consentimento=False)
+ok("cadastrar o rosto sem aceitar o termo é recusado", not r.get("success") and r.get("precisa_consentimento"), str(r.get("error")))
+ok("e nenhum cadastro foi criado", not any(o["nome"] == "Teste Rosto Dani" for o in chamar(adm, "listar_rostos")["operadores"]))
+D = rosto()
+r = entrar(requests.Session(), D, "Teste Rosto Dani", "Cura")
+ok("aceitando o termo, o cadastro é feito", r.get("success") and r.get("primeiro_acesso"), str(r))
+dani = next(o for o in chamar(adm, "listar_rostos")["operadores"] if o["nome"] == "Teste Rosto Dani")
+ok("o aceite fica registrado e aparece na gestão", dani["consentimento"] is True)
+exp = chamar(adm, "lgpd_exportar_titular", usuario=dani["usuario"])
+ok("o titular pode pedir uma cópia dos dados: cadastro, consentimentos e etapas", exp["success"] and exp["cadastro"]["nome"] == "Teste Rosto Dani" and len(exp["consentimentos"]) == 1 and "etapas_registradas_na_producao" in exp, str(exp)[:140])
+ok("a cópia dos dados não traz o descritor do rosto", "descritor" not in json.dumps(exp))
+ok("operador por rosto não exporta nem exclui dados de outro", chamar(op2, "lgpd_exportar_titular", usuario=dani["usuario"]).get("success") is not True and chamar(op2, "lgpd_excluir_titular", usuario=dani["usuario"]).get("success") is not True)
+ex = chamar(adm, "lgpd_excluir_titular", usuario=dani["usuario"])
+ok("excluir os dados apaga o rosto e retira o consentimento", ex["success"] and not any(o["nome"] == "Teste Rosto Dani" for o in chamar(adm, "listar_rostos")["operadores"]))
+r = entrar(requests.Session(), parecido(D))
+ok("depois da exclusão o rosto é desconhecido de novo", r.get("precisa_cadastro"), str(r))
+ok("excluir de novo informa que não há dados", not chamar(adm, "lgpd_excluir_titular", usuario=dani["usuario"]).get("success"))
 
 print("[Cadastro fechado]")
 chamar(adm, "gerir_rosto", acao="cadastro_aberto", aberto=False)

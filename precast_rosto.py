@@ -174,9 +174,12 @@ def _melhor_correspondencia(descritor):
     ranking = []
     for r in frappe.get_all(DOCTYPE, filters={"ativo": 1}, fields=["name", "usuario", "nome", "setores", "descritor"]):
         try:
-            ranking.append((_distancia(descritor, json.loads(r.descritor)), r))
+            cadastrado = json.loads(r.descritor)
         except ValueError:
             continue
+        if not isinstance(cadastrado, list) or len(cadastrado) != len(descritor):
+            continue            # identificação do rosto inválida ou de outro tamanho: não serve para reconhecer ninguém
+        ranking.append((_distancia(descritor, cadastrado), r))
     ranking.sort(key=lambda x: x[0])
     if not ranking or ranking[0][0] > LIMIAR:
         return None, None
@@ -199,7 +202,7 @@ def _login(usuario):
     gerenciador.post_login()
 
 
-def entrar(descritor, nome=None, setor=None, desafio=None):
+def entrar(descritor, nome=None, setor=None, desafio=None, consentimento=False):
     """Entra pelo rosto. Sem cadastro anterior e com nome e setor, cadastra a pessoa (se o cadastro estiver aberto).
     Exige a prova de vida (desafio) enquanto ela estiver ligada."""
     _limitar_tentativas()
@@ -236,11 +239,16 @@ def entrar(descritor, nome=None, setor=None, desafio=None):
         return {"success": False, "error": "O cadastro pelo próprio operador está fechado. Procure o responsável."}
     if len(nome) < 3:
         return {"success": False, "error": "Escreva o nome completo."}
+    if str(consentimento).lower() not in ("1", "true", "sim"):
+        return {"success": False, "precisa_consentimento": True,
+                "error": "Para cadastrar o seu rosto é preciso ler e aceitar o termo de consentimento."}
 
     usuario = _criar_usuario(nome)
     frappe.get_doc({"doctype": DOCTYPE, "usuario": usuario, "nome": nome, "setores": json.dumps([setor], ensure_ascii=False),
                     "descritor": json.dumps([round(x, 6) for x in d]), "ativo": 1,
                     "ultimo_acesso": frappe.utils.now_datetime()}).insert(ignore_permissions=True)
+    from frappe.precast_sst import registrar_consentimento
+    registrar_consentimento(usuario, nome)
     _login(usuario)
     frappe.db.commit()
     return {"success": True, "nome": nome, "setores": [setor], "primeiro_acesso": True}
@@ -269,8 +277,9 @@ def fases_permitidas(usuario):
 def listar():
     saida = []
     for r in frappe.get_all(DOCTYPE, fields=["name", "usuario", "nome", "setores", "ativo", "ultimo_acesso"], order_by="nome asc"):
+        from frappe.precast_sst import consentimento_ativo
         saida.append({"usuario": r.usuario, "nome": r.nome, "setores": _setores_do(r), "ativo": bool(r.ativo),
-                      "ultimo_acesso": str(r.ultimo_acesso or "")[:16]})
+                      "ultimo_acesso": str(r.ultimo_acesso or "")[:16], "consentimento": consentimento_ativo(r.usuario)})
     return saida
 
 

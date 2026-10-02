@@ -79,13 +79,15 @@ window.addEventListener('load', () => {
 """
 
 
-def entrar(pw, nome, setor, foto, esperar, simular=True):
+def entrar(pw, nome, setor, foto, esperar, simular=True, consente=True):
     ctx = pw.chromium.launch(channel="chrome").new_context(viewport={"width": 420, "height": 850})
     pg = ctx.new_page()
     pg.add_init_script(PREPARO % ("true" if simular else "false", json.dumps(GESTOS)))
     pg.goto(URL + "/bipar", wait_until="domcontentloaded"); pg.wait_for_selector("#telaRosto", state="visible", timeout=20000)
     pg.wait_for_function("!!window.analisarQuadro || true")
     pg.fill("#rostoNome", nome); pg.select_option("#rostoSetor", setor)
+    if consente:
+        pg.check("#rostoConsentimento")
     pg.click("#rostoIniciar")
     passos, fim = 0, time.time() + 240
     while time.time() < fim:
@@ -96,7 +98,7 @@ def entrar(pw, nome, setor, foto, esperar, simular=True):
             if not simular and passos >= 2:
                 pg.wait_for_timeout(3000); break
         msg = pg.inner_text("#rostoMsg")
-        if msg.startswith(("Cadastro feito", "Olá")) or "vinculado" in msg or msg.startswith(("Os passos", "A verificação", "O rosto", "Não ")):
+        if msg.startswith(("Cadastro feito", "Olá")) or "vinculado" in msg or msg.startswith(("Os passos", "A verificação", "O rosto", "Não ")) or "termo de consentimento" in msg:
             break
         pg.wait_for_timeout(300)
     msg = pg.inner_text("#rostoMsg")
@@ -110,6 +112,9 @@ with sync_playwright() as pw:
     print("[Foto parada não passa na prova de vida]")
     msg, liberou, passos = entrar(pw, "Teste Rosto Ana", "Armação", "ana", False, simular=False)
     ok("uma foto comum não cumpre os gestos pedidos", not liberou and "não mostra o gesto" in msg and passos >= 2, f"{passos} passos | {msg}")
+    print("[Cadastro sem aceitar o termo]")
+    msg, liberou, passos = entrar(pw, "Teste Rosto Eva", "Cura", "caio", False, consente=False)
+    ok("sem marcar o termo, o cadastro novo é recusado e o termo abre", not liberou and "termo" in msg.lower(), f"{passos} passos | {msg}")
     print("[Primeiro acesso]")
     msg, liberou, passos = entrar(pw, "Teste Rosto Ana", "Armação", "ana", True)
     ok("rosto + nome + setor + gestos: cadastra e entra", "Cadastro feito" in msg and liberou and passos == 4, f"{passos} passos | {msg}")
