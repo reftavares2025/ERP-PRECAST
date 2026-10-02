@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>RBR Pré-Fabricados — App Oficial da Produção</title>
+  
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- HTML5 QR Code Scanner for live camera -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            rbr: {
+              blue: '#06628a',
+              blueDark: '#043e58',
+              blueLight: '#38bdf8',
+              orange: '#f19725',
+              orangeDark: '#c27315',
+              gold: '#fbbf24',
+              surface: '#0f172a',
+              card: '#1e293b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-glow-blue {
+      box-shadow: 0 0 35px -5px rgba(6, 98, 138, 0.35);
+    }
+    .glass-glow-orange {
+      box-shadow: 0 0 35px -5px rgba(241, 151, 37, 0.35);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.98); opacity: 0.85; }
+      50% { transform: scale(1.02); opacity: 1; }
+      100% { transform: scale(0.98); opacity: 0.85; }
+    }
+    .pulse-btn {
+      animation: pulse-ring 2.2s infinite ease-in-out;
+    }
+    /* Hide scrollbars for slick app feel */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+  </style>
+</head>
+<body class="min-h-full flex flex-col bg-slate-950 text-slate-100 selection:bg-rbr-orange selection:text-white pb-20">
+
+  <!-- ================= TOPBAR OFICIAL RBR ================= -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 shadow-lg">
+    <div class="max-w-xl mx-auto flex items-center justify-between">
+      
+      <!-- LOGO & BRAND -->
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="navegarPara('tab-home')">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rbr-blue to-rbr-orange flex items-center justify-center shadow-lg shadow-rbr-blue/30 border border-white/20">
+          <i data-lucide="layers" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-1.5">
+            <span class="text-base font-black tracking-wider text-white">RBR</span>
+            <span class="text-[10px] bg-rbr-orange text-slate-950 font-black px-1.5 py-0.5 rounded uppercase tracking-wider">PRODUÇÃO</span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-medium">Controle Industrial & TrueQR</p>
+        </div>
+      </div>
+
+      <!-- OPERADOR ATIVO & BOTÃO TROCAR -->
+      <button onclick="abrirModalOperador()" class="flex items-center space-x-2 bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 px-3 py-1.5 rounded-xl text-left transition shadow-sm active:scale-95">
+        <div class="w-7 h-7 rounded-lg bg-rbr-blue/30 text-rbr-blueLight border border-rbr-blue/50 flex items-center justify-center">
+          <i data-lucide="user" class="w-4 h-4"></i>
+        </div>
+        <div class="hidden sm:block">
+          <span class="text-[9px] text-slate-400 uppercase font-bold block leading-none">Operador</span>
+          <span class="text-xs font-bold text-white truncate max-w-[120px] block leading-tight" id="topbar-op-nome">Carlos Silva</span>
+        </div>
+        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+      </button>
+
+    </div>
+  </header>
+
+  <!-- ================= CORPO PRINCIPAL ================= -->
+  <main class="max-w-xl mx-auto w-full px-4 pt-4 flex-1">
+
+    <!-- ================= ABA 1: DASHBOARD INICIAL (HOME) ================= -->
+    <section id="tab-home" class="tab-pane space-y-4">
+      
+      <!-- CARD DE BOAS-VINDAS & OPERADOR ATUAL -->
+      <div class="glass-card rounded-3xl p-5 relative overflow-hidden glass-glow-blue border-rbr-blue/30">
+        <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-gradient-to-tr from-rbr-blue to-rbr-orange opacity-20 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-rbr-orange block">Painel Operacional</span>
+            <h1 class="text-xl font-black text-white mt-0.5">Estação de Trabalho</h1>
+          </div>
+          <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-1"></span> ONLINE
+          </span>
+        </div>
+
+        <div class="mt-4 p-3 bg-slate-900/80 rounded-2xl border border-slate-800 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-rbr-blue flex items-center justify-center text-white font-black text-sm">
+              <span id="card-op-avatar">CS</span>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-white" id="card-op-nome">Carlos Silva (Armação)</p>
+              <p class="text-[10px] text-slate-400" id="card-op-funcao">Matrícula: #104 • RBR Fábrica 01</p>
+            </div>
+          </div>
+          <button onclick="abrirModalOperador()" class="text-xs font-bold text-rbr-blueLight hover:underline px-2 py-1">
+            Alterar
+          </button>
+        </div>
+
+        <!-- INDICADORES RÁPIDOS DA FÁBRICA -->
+        <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-800">
+          <div class="bg-slate-900/60 p-2.5 rounded-xl text-center">
+            <span class="text-[9px] text-slate-400 uppercase font-bold block">Em Produção</span>
+            <span class="text-base font-black text-rbr-orange" id="kpi-em-producao">--</span>
+          </div>
+          <div class="bg-slate-900/60 p-2.5 rounded-xl text-center">
+            <span class="text-[9px] text-slate-400 uppercase font-bold block">Concluídas</span>
+            <span class="text-base font-black text-emerald-400" id="kpi-concluidas">--</span>
+          </div>
+          <div class="bg-slate-900/60 p-2.5 rounded-xl text-center">
+            <span class="text-[9px] text-slate-400 uppercase font-bold block">Ocorrências</span>
+            <span class="text-base font-black text-rose-400" id="kpi-ocorrencias">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 GRANDES BOTÕES DE AÇÃO DO OPERADOR -->
+      <div class="space-y-2.5">
+        <h2 class="text-xs font-black uppercase tracking-wider text-slate-400 px-1">Ações Rápidas de Produção</h2>
+
+        <!-- BOTÃO 1: BIPAR QR CODE -->
+        <button onclick="navegarPara('tab-bipar')" class="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black shadow-lg shadow-emerald-950/40 flex items-center justify-between transition active:scale-[0.98] group">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shadow-inner">
+              <i data-lucide="qr-code" class="w-6 h-6 text-white group-hover:scale-110 transition-transform"></i>
+            </div>
+            <div class="text-left">
+              <span class="text-base font-black block tracking-wide">BIPAR QR CODE</span>
+              <span class="text-xs text-emerald-100 font-medium">Avançar etapa pelo leitor de câmera ou laser</span>
+            </div>
+          </div>
+          <i data-lucide="chevron-right" class="w-5 h-5 text-white/80"></i>
+        </button>
+
+        <!-- BOTÃO 2: VERIFICAR PRODUÇÃO -->
+        <button onclick="navegarPara('tab-producao')" class="w-full p-4 rounded-2xl glass-card hover:bg-slate-800/90 text-white font-bold border border-slate-700/80 flex items-center justify-between transition active:scale-[0.98] group">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-12 h-12 rounded-xl bg-rbr-blue/30 text-rbr-blueLight border border-rbr-blue/40 flex items-center justify-center">
+              <i data-lucide="factory" class="w-6 h-6 group-hover:scale-110 transition-transform"></i>
+            </div>
+            <div class="text-left">
+              <span class="text-sm font-black text-white block">VERIFICAR PRODUÇÃO</span>
+              <span class="text-xs text-slate-400 font-medium">Esteira de fases, lotes e peças ativas</span>
+            </div>
+          </div>
+          <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500"></i>
+        </button>
+
+        <!-- BOTÃO 3: VERIFICAR PEÇA (DETALHES & PRANCHA) -->
+        <button onclick="navegarPara('tab-peca')" class="w-full p-4 rounded-2xl glass-card hover:bg-slate-800/90 text-white font-bold border border-slate-700/80 flex items-center justify-between transition active:scale-[0.98] group">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center">
+              <i data-lucide="search" class="w-6 h-6 group-hover:scale-110 transition-transform"></i>
+            </div>
+            <div class="text-left">
+              <span class="text-sm font-black text-white block">VERIFICAR PEÇA</span>
+              <span class="text-xs text-slate-400 font-medium">Ficha técnica, print real e prancha PDF</span>
+            </div>
+          </div>
+          <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500"></i>
+        </button>
+
+        <!-- BOTÃO 4: REPORTAR OCORRÊNCIA / NÃO CONFORMIDADE -->
+        <button onclick="navegarPara('tab-reportar')" class="w-full p-4 rounded-2xl glass-card hover:bg-slate-800/90 text-white font-bold border border-rose-900/40 bg-rose-950/20 flex items-center justify-between transition active:scale-[0.98] group">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-12 h-12 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center">
+              <i data-lucide="alert-triangle" class="w-6 h-6 group-hover:scale-110 transition-transform"></i>
+            </div>
+            <div class="text-left">
+              <span class="text-sm font-black text-rose-300 block">REPORTAR PEÇA / NÃO CONFORMIDADE</span>
+              <span class="text-xs text-slate-400 font-medium">Fissura, desvio de fôrma, armadura ou quebra</span>
+            </div>
+          </div>
+          <i data-lucide="chevron-right" class="w-5 h-5 text-rose-400/60"></i>
+        </button>
+
+        <!-- BOTÃO 5: HISTÓRICO DE PRODUÇÃO & AUDITORIA -->
+        <button onclick="navegarPara('tab-historico')" class="w-full p-4 rounded-2xl glass-card hover:bg-slate-800/90 text-white font-bold border border-slate-700/80 flex items-center justify-between transition active:scale-[0.98] group">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-12 h-12 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center">
+              <i data-lucide="clock" class="w-6 h-6 group-hover:scale-110 transition-transform"></i>
+            </div>
+            <div class="text-left">
+              <span class="text-sm font-black text-white block">HISTÓRICO DE PRODUÇÃO</span>
+              <span class="text-xs text-slate-400 font-medium">Registro permanente de bipagens e auditoria</span>
+            </div>
+          </div>
+          <i data-lucide="chevron-right" class="w-5 h-5 text-slate-500"></i>
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= ABA 2: BIPAR QR CODE ================= -->
+    <section id="tab-bipar" class="tab-pane hidden space-y-4">
+      
+      <!-- CABEÇALHO DO LEITOR -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <button onclick="navegarPara('tab-home')" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          </button>
+          <h2 class="text-lg font-black text-white">Scanner de Produção</h2>
+        </div>
+        <span class="text-[11px] font-bold text-slate-400 flex items-center space-x-1">
+          <i data-lucide="user-check" class="w-3.5 h-3.5 text-rbr-blueLight"></i>
+          <span id="scan-operator-badge">Carlos Silva</span>
+        </span>
+      </div>
+
+      <!-- JANELA DO SCANNER DE CÂMERA -->
+      <div class="glass-card rounded-3xl p-4 space-y-3">
+        <div class="relative bg-black rounded-2xl overflow-hidden aspect-video border border-slate-700 flex flex-col items-center justify-center">
+          <div id="qr-reader" class="w-full h-full"></div>
+          
+          <div id="scanner-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-slate-900/90 z-10">
+            <i data-lucide="camera" class="w-10 h-10 text-slate-500 mb-2"></i>
+            <p class="text-xs text-slate-300 font-bold">Câmera desativada</p>
+            <p class="text-[11px] text-slate-500 mb-3">Toque para ativar o leitor óptico pelo celular/tablet</p>
+            <button onclick="iniciarCameraScanner()" class="px-4 py-2 rounded-xl bg-rbr-blue hover:bg-rbr-blueLight text-white font-bold text-xs flex items-center space-x-1.5 shadow-lg shadow-rbr-blue/30">
+              <i data-lucide="video" class="w-4 h-4"></i>
+              <span>Ativar Câmera</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ENTRADA RÁPIDA VIA PISTOLA LASER USB OU DIGITAÇÃO -->
+        <div class="pt-2">
+          <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1.5 flex items-center justify-between">
+            <span>Leitor Laser / Digitação de Código:</span>
+            <span class="text-[10px] text-rbr-blueLight">Pressione Enter</span>
+          </label>
+          <div class="flex space-x-2">
+            <input type="text" id="input-bip-manual" placeholder="Ex: PM12, BM28 ou VIG-01..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:border-rbr-blue focus:ring-1 focus:ring-rbr-blue uppercase" onkeydown="if(event.key==='Enter') biparManual()">
+            <button onclick="biparManual()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center space-x-1.5 shadow-md shadow-emerald-950/40">
+              <i data-lucide="check" class="w-4 h-4"></i>
+              <span>BIPAR</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULTADO DA ÚLTIMA BIPAGEM -->
+      <div id="box-resultado-bip" class="hidden glass-card rounded-3xl p-5 border-emerald-500/40 bg-emerald-950/20 space-y-3">
+        <div class="flex items-start justify-between">
+          <div>
+            <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 mb-1">
+              BIPAGEM SUCESSO
+            </span>
+            <h3 class="text-xl font-black text-white" id="res-bip-tag">PEÇA PM12</h3>
+            <p class="text-xs text-slate-300" id="res-bip-obra">Obra: ---</p>
+          </div>
+          <div class="text-right">
+            <span class="text-[9px] text-slate-400 uppercase font-mono block">CÓDIGO</span>
+            <span class="text-lg font-black text-rbr-orange font-mono" id="res-bip-cod">PM12</span>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-900/80 rounded-2xl border border-slate-800">
+          <div class="flex justify-between items-center text-xs mb-1.5">
+            <span class="text-slate-400 font-bold">Novo Estágio:</span>
+            <span class="text-emerald-400 font-black" id="res-bip-fase-num">Fase 2 de 8</span>
+          </div>
+          <p class="text-sm font-black text-white" id="res-bip-fase-nome">2. Armação Estrutural</p>
+          <p class="text-[10px] text-slate-400 mt-1" id="res-bip-operador-log">Operador: Carlos Silva • Data/Hora: 22/09/2026 10:30</p>
+        </div>
+
+        <div class="flex space-x-2 pt-1">
+          <button onclick="abrirVerificacaoComCod(currentScannedCod)" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center space-x-1.5 border border-slate-700">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-rbr-blueLight"></i>
+            <span>Ver Ficha da Peça</span>
+          </button>
+          <button onclick="abrirReportarComCod(currentScannedCod)" class="py-2.5 px-3 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-400 font-bold text-xs flex items-center justify-center space-x-1 border border-rose-800/40">
+            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+            <span>Reportar</span>
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ================= ABA 3: VERIFICAR PRODUÇÃO ================= -->
+    <section id="tab-producao" class="tab-pane hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <button onclick="navegarPara('tab-home')" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          </button>
+          <h2 class="text-lg font-black text-white">Status da Produção</h2>
+        </div>
+        <button onclick="carregarProjetos()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- FILTRO RÁPIDO DE FASES -->
+      <div class="flex space-x-1.5 overflow-x-auto pb-1 text-xs">
+        <button onclick="filtrarProducao('todas')" class="fase-filter-btn px-3 py-1.5 rounded-xl bg-rbr-blue text-white font-bold whitespace-nowrap active-filter" data-filter="todas">
+          Todas
+        </button>
+        <button onclick="filtrarProducao('1')" class="fase-filter-btn px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold whitespace-nowrap" data-filter="1">
+          1. Aço
+        </button>
+        <button onclick="filtrarProducao('2')" class="fase-filter-btn px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold whitespace-nowrap" data-filter="2">
+          2. Armação
+        </button>
+        <button onclick="filtrarProducao('4')" class="fase-filter-btn px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold whitespace-nowrap" data-filter="4">
+          4. Concretagem
+        </button>
+        <button onclick="filtrarProducao('6')" class="fase-filter-btn px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold whitespace-nowrap" data-filter="6">
+          6. CQ
+        </button>
+        <button onclick="filtrarProducao('8')" class="fase-filter-btn px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold whitespace-nowrap" data-filter="8">
+          8. Concluídas
+        </button>
+      </div>
+
+      <!-- LISTA DE PEÇAS NA PRODUÇÃO -->
+      <div id="lista-pecas-producao" class="space-y-3">
+        <!-- Renderizado dinamicamente -->
+      </div>
+    </section>
+
+
+    <!-- ================= ABA 4: VERIFICAR PEÇA (DETALHES, PRANCHA & TRUEQR) ================= -->
+    <section id="tab-peca" class="tab-pane hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <button onclick="navegarPara('tab-home')" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          </button>
+          <h2 class="text-lg font-black text-white">Ficha Técnica & Prancha</h2>
+        </div>
+      </div>
+
+      <!-- CAMPO DE BUSCA DE PEÇA -->
+      <div class="flex space-x-2">
+        <input type="text" id="busca-peca-input" placeholder="Buscar peça por código ou tag..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rbr-blue uppercase">
+        <button onclick="buscarPecaPorInput()" class="px-4 py-2.5 rounded-xl bg-rbr-blue hover:bg-rbr-blueLight text-white font-bold text-xs flex items-center space-x-1">
+          <i data-lucide="search" class="w-4 h-4"></i>
+          <span>Buscar</span>
+        </button>
+      </div>
+
+      <!-- DETALHES DA PEÇA SELECIONADA -->
+      <div id="detalhes-peca-container" class="space-y-4">
+        <!-- Card Principal da Peça -->
+        <div class="glass-card rounded-3xl p-5 space-y-4 border-slate-700">
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rbr-blue/30 text-rbr-blueLight border border-rbr-blue/50 mb-1" id="det-pill-status">
+                EM PRODUÇÃO
+              </span>
+              <h3 class="text-2xl font-black text-white" id="det-tag">SELECIONE UMA PEÇA</h3>
+              <p class="text-xs text-slate-400" id="det-obra">Obra: ---</p>
+            </div>
+            <div class="text-right">
+              <span class="text-[9px] text-slate-400 uppercase font-mono block">CÓDIGO PCP</span>
+              <span class="text-lg font-black text-rbr-orange font-mono" id="det-cod">---</span>
+            </div>
+          </div>
+
+          <!-- PROGRESSO DA FASE -->
+          <div class="p-3 bg-slate-900/80 rounded-2xl border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-400 font-bold">Estágio Atual:</span>
+              <span class="text-emerald-400 font-black" id="det-fase-num">Fase 1 / 8</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-700">
+              <div id="det-prog-bar" class="bg-gradient-to-r from-rbr-blue via-rbr-orange to-emerald-500 h-full rounded-full transition-all duration-500" style="width: 12.5%;"></div>
+            </div>
+            <p class="text-xs font-bold text-white text-center" id="det-fase-nome">1. Corte e Dobra de Aço</p>
+            <button onclick="abrirModalCorrigirFase()" class="w-full py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 font-bold text-[11px] flex items-center justify-center space-x-1.5 border border-amber-500/30 mt-1">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span>Corrigir Fase / Voltar Setor</span>
+            </button>
+          </div>
+
+          <!-- DADOS TÉCNICOS DE ENGENHARIA -->
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-slate-900/60 p-2.5 rounded-xl">
+              <span class="text-[9px] text-slate-400 block font-bold">TIPO / PRODUTO</span>
+              <strong id="det-produto" class="text-white">---</strong>
+            </div>
+            <div class="bg-slate-900/60 p-2.5 rounded-xl">
+              <span class="text-[9px] text-slate-400 block font-bold">SEÇÃO</span>
+              <strong id="det-secao" class="text-white">---</strong>
+            </div>
+            <div class="bg-slate-900/60 p-2.5 rounded-xl">
+              <span class="text-[9px] text-slate-400 block font-bold">COMPRIMENTO</span>
+              <strong id="det-comp" class="text-white">---</strong>
+            </div>
+            <div class="bg-slate-900/60 p-2.5 rounded-xl">
+              <span class="text-[9px] text-slate-400 block font-bold">PESO ESTIMADO</span>
+              <strong id="det-peso" class="text-emerald-400">---</strong>
+            </div>
+            <div class="bg-slate-900/60 p-2.5 rounded-xl">
+              <span class="text-[9px] text-slate-400 block font-bold">VOLUME</span>
+              <strong id="det-vol" class="text-white">---</strong>
+            </div>
+            <div class="bg-slate-900/60 p-2.5 rounded-xl">
+              <span class="text-[9px] text-slate-400 block font-bold">CONCRETO FCK</span>
+              <strong id="det-fck" class="text-white">---</strong>
+            </div>
+          </div>
+
+          <!-- BOTÕES DE DOCUMENTAÇÃO ORIGINAL & TRUEQR -->
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+            <a id="det-link-pdf" href="#" target="_blank" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center space-x-1.5 border border-slate-700 text-xs">
+              <i data-lucide="file-text" class="w-4 h-4 text-rbr-blueLight"></i>
+              <span>Prancha PDF Real</span>
+            </a>
+            <button onclick="abrirModalTrueQR(selectedPiece)" class="py-2.5 rounded-xl bg-rbr-blue/30 hover:bg-rbr-blue/50 text-rbr-blueLight font-bold flex items-center justify-center space-x-1.5 border border-rbr-blue/40 text-xs">
+              <i data-lucide="qr-code" class="w-4 h-4"></i>
+              <span>Ver TrueQR</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- PRINT AUTÊNTICO DA PRANCHA / DESENHO REAL -->
+        <div class="glass-card rounded-3xl p-4 space-y-2 border-slate-700">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center space-x-1.5">
+              <i data-lucide="image" class="w-4 h-4 text-emerald-400"></i>
+              <span>Desenho Real da Peça (Print Autêntico)</span>
+            </h4>
+            <a id="det-link-print" href="#" target="_blank" class="text-[11px] font-bold text-rbr-blueLight hover:underline">
+              Ampliar
+            </a>
+          </div>
+          <div class="bg-white rounded-2xl p-2 overflow-hidden border border-slate-700 flex items-center justify-center min-h-[180px]">
+            <img id="det-img-print" src="" alt="Desenho Real da Peça" class="w-full max-h-64 object-contain rounded">
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ================= ABA 5: REPORTAR OCORRÊNCIA / NÃO CONFORMIDADE ================= -->
+    <section id="tab-reportar" class="tab-pane hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <button onclick="navegarPara('tab-home')" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          </button>
+          <h2 class="text-lg font-black text-rose-400 flex items-center space-x-1.5">
+            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+            <span>Reportar Não Conformidade</span>
+          </h2>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-3xl p-5 border-rose-900/40 bg-rose-950/10 space-y-4">
+        <p class="text-xs text-slate-300">
+          Registre qualquer desvio, trinca, falha de concretagem ou problema no transporte para controle imediato de qualidade.
+        </p>
+
+        <!-- SELEÇÃO DA PEÇA -->
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Peça Afetada:</label>
+          <select id="rep-select-peca" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-rose-500">
+            <!-- Opções carregadas dinamicamente -->
+          </select>
+        </div>
+
+        <!-- TIPO DE OCORRÊNCIA -->
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Tipo de Ocorrência:</label>
+          <select id="rep-tipo-nc" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-rose-500">
+            <option value="Trinca ou Fissura de Cura">Trinca ou Fissura de Cura / Desforma</option>
+            <option value="Ninho de Concretagem (Bicheira)">Ninho de Concretagem (Bicheira)</option>
+            <option value="Desvio Dimensional / Forma">Desvio Dimensional / Deformação de Fôrma</option>
+            <option value="Armadura Exposta / Cobrimento">Armadura Exposta / Falta de Cobrimento</option>
+            <option value="Inserto / Embutido Deslocado">Inserto / Chumbador / Embutido Deslocado</option>
+            <option value="Avaria no Pátio / Transporte">Avaria no Manuseio / Pátio / Transporte</option>
+            <option value="Outro Defeito">Outro / Retrabalho Necessário</option>
+          </select>
+        </div>
+
+        <!-- GRAVIDADE -->
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Gravidade / Criticidade:</label>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="flex items-center justify-center p-2.5 rounded-xl border border-slate-700 bg-slate-900 text-xs font-bold text-amber-300 cursor-pointer hover:bg-slate-800">
+              <input type="radio" name="rep-gravidade" value="Leve" class="mr-1.5" checked> Leve
+            </label>
+            <label class="flex items-center justify-center p-2.5 rounded-xl border border-slate-700 bg-slate-900 text-xs font-bold text-orange-400 cursor-pointer hover:bg-slate-800">
+              <input type="radio" name="rep-gravidade" value="Média" class="mr-1.5"> Média
+            </label>
+            <label class="flex items-center justify-center p-2.5 rounded-xl border border-rose-800/80 bg-rose-950/40 text-xs font-black text-rose-400 cursor-pointer hover:bg-rose-900/40">
+              <input type="radio" name="rep-gravidade" value="Crítica" class="mr-1.5"> Crítica
+            </label>
+          </div>
+        </div>
+
+        <!-- DESCRIÇÃO DETALHADA -->
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Descrição do Defeito / Observação:</label>
+          <textarea id="rep-descricao" rows="3" placeholder="Ex: Fissura de 15cm próxima ao consolo superior durante o desmolde..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"></textarea>
+        </div>
+
+        <!-- BOTÃO ENVIAR OCORRÊNCIA -->
+        <button onclick="enviarOcorrencia()" class="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-sm shadow-lg shadow-rose-950/40 flex items-center justify-center space-x-2 transition active:scale-95">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          <span>REGISTRAR OCORRÊNCIA NO HISTÓRICO</span>
+        </button>
+      </div>
+    </section>
+
+
+    <!-- ================= ABA 6: HISTÓRICO DE PRODUÇÃO PERMANENTE ================= -->
+    <section id="tab-historico" class="tab-pane hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <button onclick="navegarPara('tab-home')" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          </button>
+          <h2 class="text-lg font-black text-white">Histórico Permanente</h2>
+        </div>
+        <button onclick="carregarHistorico()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        Registro cronológico de todas as bipagens, avanços de fase e ocorrências da fábrica.
+      </p>
+
+      <!-- TIMELINE DE EVENTOS -->
+      <div id="timeline-container" class="space-y-3">
+        <!-- Renderizado dinamicamente -->
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- ================= BOTTOM NAVIGATION BAR (APP NATIVO FEEL) ================= -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 px-3 py-2 shadow-2xl">
+    <div class="max-w-xl mx-auto grid grid-cols-5 gap-1 text-center">
+      
+      <button onclick="navegarPara('tab-home')" class="nav-btn flex flex-col items-center py-1 text-rbr-orange active-nav" data-tab="tab-home">
+        <i data-lucide="home" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold mt-1">Início</span>
+      </button>
+
+      <button onclick="navegarPara('tab-bipar')" class="nav-btn flex flex-col items-center py-1 text-slate-400 hover:text-white" data-tab="tab-bipar">
+        <i data-lucide="qr-code" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold mt-1">Bipar</span>
+      </button>
+
+      <button onclick="navegarPara('tab-producao')" class="nav-btn flex flex-col items-center py-1 text-slate-400 hover:text-white" data-tab="tab-producao">
+        <i data-lucide="factory" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold mt-1">Produção</span>
+      </button>
+
+      <button onclick="navegarPara('tab-peca')" class="nav-btn flex flex-col items-center py-1 text-slate-400 hover:text-white" data-tab="tab-peca">
+        <i data-lucide="search" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold mt-1">Peça</span>
+      </button>
+
+      <button onclick="navegarPara('tab-historico')" class="nav-btn flex flex-col items-center py-1 text-slate-400 hover:text-white" data-tab="tab-historico">
+        <i data-lucide="clock" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold mt-1">Histórico</span>
+      </button>
+
+    </div>
+  </nav>
+
+
+  <!-- ================= MODAL SELEÇÃO DE OPERADOR ================= -->
+  <div id="modal-operador" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="glass-card rounded-3xl p-6 max-w-sm w-full space-y-4 border-slate-700 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-black text-white flex items-center space-x-2">
+          <i data-lucide="users" class="w-5 h-5 text-rbr-orange"></i>
+          <span>Identificar Operador</span>
+        </h3>
+        <button onclick="fecharModalOperador()" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        Selecione quem está operando esta estação para assinar as bipagens e registros no histórico permanente:
+      </p>
+
+      <div id="lista-operadores-modal" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+        <!-- Lista de operadores carregada do servidor -->
+      </div>
+
+      <!-- ADICIONAR NOVO OPERADOR -->
+      <div class="pt-3 border-t border-slate-800 space-y-2">
+        <span class="text-[10px] font-bold uppercase text-slate-400 block">Cadastrar Novo Operador:</span>
+        <input type="text" id="novo-op-nome" placeholder="Nome Completo..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+        <input type="text" id="novo-op-cargo" placeholder="Função (ex: Concretagem, CQ)..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+        <button onclick="cadastrarNovoOperador()" class="w-full py-2.5 rounded-xl bg-rbr-blue hover:bg-rbr-blueLight text-white font-bold text-xs flex items-center justify-center space-x-1">
+          <i data-lucide="user-plus" class="w-4 h-4"></i>
+          <span>Salvar Operador</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= MODAL CORRIGIR FASE / VOLTAR SETOR ================= -->
+  <div id="modal-corrigir-fase" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="glass-card rounded-3xl p-6 max-w-sm w-full space-y-4 border-slate-700 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-black text-white flex items-center space-x-2">
+          <i data-lucide="rotate-ccw" class="w-5 h-5 text-amber-400"></i>
+          <span>Corrigir Fase da Peça</span>
+        </h3>
+        <button onclick="fecharModalCorrigirFase()" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        Peça <strong id="cf-cod" class="text-white font-mono">---</strong> — fase atual: <strong id="cf-fase-atual" class="text-emerald-400">---</strong>.
+        Selecione o setor correto (pode ser pra frente ou pra trás — útil quando a peça foi bipada errado ou precisa voltar pra retrabalho):
+      </p>
+
+      <div id="lista-fases-modal" class="space-y-1.5 max-h-72 overflow-y-auto pr-1"></div>
+
+      <p class="text-[10px] text-amber-400/80 leading-snug">
+        ⚠ Isso fica registrado no histórico como retrocesso/correção manual, com seu nome e horário — não é uma bipagem normal.
+      </p>
+    </div>
+  </div>
+
+  <!-- ================= MODAL APRESENTAÇÃO DO TRUEQR DA PEÇA ================= -->
+  <div id="modal-trueqr" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+    <div class="glass-card rounded-3xl p-6 max-w-sm w-full space-y-4 border-slate-700 shadow-2xl text-center">
+      <div class="flex items-center justify-between">
+        <span class="text-[10px] font-black uppercase text-rbr-orange tracking-widest">RBR TrueQR Engine</span>
+        <button onclick="fecharModalTrueQR()" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl inline-block shadow-2xl border-4 border-slate-800">
+        <img id="modal-qr-img" src="" alt="TrueQR Code" class="w-56 h-56 mx-auto">
+      </div>
+
+      <div>
+        <h3 class="text-xl font-black text-white" id="modal-qr-tag">PEÇA PM12</h3>
+        <p class="text-xs text-slate-400" id="modal-qr-cod">Código PCP: PM12</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+        <a id="modal-qr-label-btn" href="#" target="_blank" class="py-2.5 rounded-xl bg-rbr-blue hover:bg-rbr-blueLight text-white font-bold text-xs flex items-center justify-center space-x-1">
+          <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+          <span>Etiqueta Zebra</span>
+        </a>
+        <button onclick="fecharModalTrueQR()" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= JAVASCRIPT DO APP ================= -->
+  <script>
+    const FASES = [
+      "1. Corte e Dobra de Aço",
+      "2. Armação Estrutural",
+      "3. Fôrmas & Embutidos",
+      "4. Concretagem (Lançamento)",
+      "5. Cura & Desmolde",
+      "6. Acabamento & CQ",
+      "7. Expedição & Pátio",
+      "8. Execução na Obra (Montado)"
+    ];
+
+    // fase_atual=0 = peça lançada mas ainda não bipada (fora da linha).
+    function faseNomeDisplay(n) {
+      if (n === 0 || n === null || n === undefined) return 'Aguardando Bipagem';
+      return FASES[n - 1] || `Fase ${n}`;
+    }
+
+    let allPieces = [];
+    let allObras = [];
+    let allOperators = [];
+    let selectedPiece = null;
+    let currentScannedCod = '';
+    let html5QrScanner = null;
+
+    // Operador ativo (salvo no localStorage)
+    let currentOperator = JSON.parse(localStorage.getItem('rbr_active_operator')) || {
+      id: "op-1",
+      nome: "Carlos Silva",
+      cargo: "Armação & Aço",
+      matricula: "104"
+    };
+
+    function playBeep() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+      } catch (e) {}
+    }
+
+    function playAlertSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(330, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } catch (e) {}
+    }
+
+    function navegarPara(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      const target = document.getElementById(tabId);
+      if (target) target.classList.remove('hidden');
+
+      // Update bottom nav buttons
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.getAttribute('data-tab') === tabId) {
+          btn.classList.add('text-rbr-orange');
+          btn.classList.remove('text-slate-400');
+        } else {
+          btn.classList.remove('text-rbr-orange');
+          btn.classList.add('text-slate-400');
+        }
+      });
+
+      if (tabId === 'tab-producao') renderProducao();
+      if (tabId === 'tab-historico') carregarHistorico();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function atualizarDisplayOperador() {
+      document.getElementById('topbar-op-nome').textContent = currentOperator.nome.split(' ')[0] + ' (' + (currentOperator.cargo.split(' ')[0]) + ')';
+      document.getElementById('card-op-nome').textContent = `${currentOperator.nome} (${currentOperator.cargo})`;
+      document.getElementById('card-op-funcao').textContent = `Matrícula: #${currentOperator.matricula || '---'} • RBR Fábrica 01`;
+      document.getElementById('scan-operator-badge').textContent = currentOperator.nome;
+
+      const initials = currentOperator.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+      document.getElementById('card-op-avatar').textContent = initials || 'OP';
+    }
+
+    function abrirModalOperador() {
+      renderListaOperadoresModal();
+      document.getElementById('modal-operador').classList.remove('hidden');
+    }
+
+    function fecharModalOperador() {
+      document.getElementById('modal-operador').classList.add('hidden');
+    }
+
+    function selecionarOperador(op) {
+      currentOperator = op;
+      localStorage.setItem('rbr_active_operator', JSON.stringify(op));
+      atualizarDisplayOperador();
+      fecharModalOperador();
+    }
+
+    function renderListaOperadoresModal() {
+      const container = document.getElementById('lista-operadores-modal');
+      container.innerHTML = '';
+      allOperators.forEach(op => {
+        const isSelected = op.id === currentOperator.id;
+        const btn = document.createElement('button');
+        btn.className = `w-full p-2.5 rounded-xl text-left flex items-center justify-between border transition ${
+          isSelected ? 'bg-rbr-blue/30 border-rbr-blue text-white' : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
+        }`;
+        btn.onclick = () => selecionarOperador(op);
+        btn.innerHTML = `
+          <div>
+            <strong class="text-xs block text-white">${op.nome}</strong>
+            <span class="text-[10px] text-slate-400">${op.cargo} • #${op.matricula}</span>
+          </div>
+          ${isSelected ? '<span class="text-xs font-black text-rbr-blueLight">ATIVO</span>' : ''}
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    async function cadastrarNovoOperador() {
+      const nome = document.getElementById('novo-op-nome').value.trim();
+      const cargo = document.getElementById('novo-op-cargo').value.trim();
+      if (!nome) return alert('Por favor, informe o nome do operador.');
+
+      try {
+        const res = await fetch('/api/operators', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, cargo: cargo || 'Operador' })
+        });
+        const data = await res.json();
+        if (data.success && data.operator) {
+          allOperators = data.operators || [];
+          selecionarOperador(data.operator);
+          document.getElementById('novo-op-nome').value = '';
+          document.getElementById('novo-op-cargo').value = '';
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function carregarProjetos() {
+      try {
+        const res = await fetch('/api/projects');
+        const data = await res.json();
+        allPieces = data.pieces || [];
+        allObras = data.obras || [];
+        allOperators = data.operators || [currentOperator];
+
+        // Atualizar KPIs da Home
+        const concluidas = allPieces.filter(p => parseInt(p.fase_atual ?? 1) >= 8).length;
+        const emProd = allPieces.length - concluidas;
+        const ocorrencias = (data.issues || []).length;
+
+        document.getElementById('kpi-em-producao').textContent = emProd;
+        document.getElementById('kpi-concluidas').textContent = concluidas;
+        document.getElementById('kpi-ocorrencias').textContent = ocorrencias;
+
+        // Atualizar lista do select de reporte
+        const selectRep = document.getElementById('rep-select-peca');
+        selectRep.innerHTML = '';
+        allPieces.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.cod;
+          opt.textContent = `${p.tag || p.cod} — ${p.produto || 'Peça'} (${p.obra || 'RBR'})`;
+          selectRep.appendChild(opt);
+        });
+
+        // Se tiver ?cod= na URL, focar diretamente na peça
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCod = urlParams.get('cod');
+        if (urlCod) {
+          abrirVerificacaoComCod(urlCod);
+        } else if (allPieces.length > 0 && !selectedPiece) {
+          selecionarPeca(allPieces[0]);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderProducao(filtro = 'todas') {
+      const container = document.getElementById('lista-pecas-producao');
+      container.innerHTML = '';
+
+      let piecesToShow = allPieces;
+      if (filtro !== 'todas') {
+        piecesToShow = allPieces.filter(p => String(p.fase_atual ?? 1) === String(filtro));
+      }
+
+      if (piecesToShow.length === 0) {
+        container.innerHTML = `
+          <div class="glass-card rounded-2xl p-6 text-center text-slate-400">
+            <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+            <p class="text-xs">Nenhuma peça nesta etapa no momento.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      piecesToShow.forEach(p => {
+        const faseNum = Math.min(8, Math.max(1, parseInt(p.fase_atual ?? 1)));
+        const pct = (faseNum / 8) * 100;
+        const card = document.createElement('div');
+        card.className = "glass-card rounded-2xl p-4 space-y-2.5 border-slate-800 hover:border-slate-700 transition cursor-pointer";
+        card.onclick = () => {
+          selecionarPeca(p);
+          navegarPara('tab-peca');
+        };
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="text-[9px] font-black uppercase text-rbr-blueLight tracking-wider">${p.produto || 'Pré-Fabricado'}</span>
+              <h4 class="text-base font-black text-white">${p.tag || p.cod}</h4>
+              <p class="text-[11px] text-slate-400">${p.obra || 'RBR Obra'}</p>
+            </div>
+            <span class="text-xs font-mono font-black text-rbr-orange bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">${p.cod}</span>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-slate-400">${faseNomeDisplay(faseNum)}</span>
+              <span class="font-bold ${faseNum >= 8 ? 'text-emerald-400' : 'text-rbr-blueLight'}">${faseNum}/8 (${Math.round(pct)}%)</span>
+            </div>
+            <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
+              <div class="bg-gradient-to-r from-rbr-blue to-emerald-500 h-full rounded-full" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    function filtrarProducao(filtro) {
+      document.querySelectorAll('.fase-filter-btn').forEach(b => {
+        if (b.getAttribute('data-filter') === filtro) {
+          b.className = 'fase-filter-btn px-3 py-1.5 rounded-xl bg-rbr-blue text-white font-bold whitespace-nowrap active-filter';
+        } else {
+          b.className = 'fase-filter-btn px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold whitespace-nowrap';
+        }
+      });
+      renderProducao(filtro);
+    }
+
+    function selecionarPeca(p) {
+      if (!p) return;
+      selectedPiece = p;
+
+      document.getElementById('det-tag').textContent = p.tag || p.cod;
+      document.getElementById('det-cod').textContent = p.cod || '---';
+      document.getElementById('det-obra').textContent = `Obra: ${p.obra || p.cliente || 'RBR Geral'}`;
+      document.getElementById('det-produto').textContent = p.produto || 'Pré-Fabricado';
+      document.getElementById('det-secao').textContent = p.secao || 'A CONFIRMAR';
+      document.getElementById('det-comp').textContent = p.comp ? `${p.comp} m` : 'A CONFIRMAR';
+      document.getElementById('det-peso').textContent = p.peso ? `${p.peso.toLocaleString('pt-BR')} kg` : 'A CONFIRMAR';
+      document.getElementById('det-vol').textContent = p.vol ? `${p.vol} m³` : 'A CONFIRMAR';
+      document.getElementById('det-fck').textContent = p.fck || 'A CONFIRMAR';
+
+      // Aviso de confirmação se houver
+      let avisoBox = document.getElementById('det-aviso-box');
+      if (p.aviso && !p.dimensoes_confirmadas) {
+        if (!avisoBox) {
+          avisoBox = document.createElement('div');
+          avisoBox.id = 'det-aviso-box';
+          avisoBox.className = 'mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] flex items-start space-x-2';
+          document.getElementById('det-fck').closest('.grid').after(avisoBox);
+        }
+        avisoBox.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5"></i><span><strong>Atenção:</strong> ${p.aviso}</span>`;
+        avisoBox.classList.remove('hidden');
+      } else if (avisoBox) {
+        avisoBox.classList.add('hidden');
+      }
+
+      const faseAtual = Math.min(8, Math.max(1, parseInt(p.fase_atual ?? 1)));
+      const pct = (faseAtual / 8) * 100;
+      document.getElementById('det-prog-bar').style.width = `${pct}%`;
+      document.getElementById('det-fase-num').textContent = `Fase ${faseAtual} de 8`;
+      document.getElementById('det-fase-nome').textContent = faseNomeDisplay(faseAtual);
+
+      const pill = document.getElementById('det-pill-status');
+      if (faseAtual >= 8) {
+        pill.textContent = "100% CONCLUÍDO NA OBRA";
+        pill.className = "inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/30 text-emerald-400 border border-emerald-500/50 mb-1";
+      } else {
+        pill.textContent = `EM PRODUÇÃO (${faseNomeDisplay(faseAtual)})`;
+        pill.className = "inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rbr-blue/30 text-rbr-blueLight border border-rbr-blue/50 mb-1";
+      }
+
+      document.getElementById('det-link-pdf').href = `/pranchas/prancha_${encodeURIComponent(p.cod)}.pdf`;
+      document.getElementById('det-link-print').href = `/pranchas/print_${encodeURIComponent(p.cod)}.png`;
+      document.getElementById('det-img-print').src = `/pranchas/print_${encodeURIComponent(p.cod)}.png`;
+      lucide.createIcons();
+    }
+
+    function buscarPecaPorInput() {
+      const q = document.getElementById('busca-peca-input').value.trim().toUpperCase().replace(/\s+/g, '');
+      if (!q) return;
+      const found = allPieces.find(p => {
+        const c = (p.cod || '').toUpperCase().replace(/\s+/g, '');
+        const t = (p.tag || '').toUpperCase().replace(/\s+/g, '');
+        return c.includes(q) || t.includes(q);
+      });
+      if (found) {
+        selecionarPeca(found);
+      } else {
+        alert(`Nenhuma peça encontrada com o termo '${q}'.`);
+      }
+    }
+
+    function abrirVerificacaoComCod(cod) {
+      const clean = cod.trim().toUpperCase().replace(/\s+/g, '');
+      const p = allPieces.find(item => {
+        const c = (item.cod || '').toUpperCase().replace(/\s+/g, '');
+        const t = (item.tag || '').toUpperCase().replace(/\s+/g, '');
+        return c === clean || t === clean;
+      });
+      if (p) {
+        selecionarPeca(p);
+        navegarPara('tab-peca');
+      }
+    }
+
+    function abrirReportarComCod(cod) {
+      const select = document.getElementById('rep-select-peca');
+      select.value = cod;
+      navegarPara('tab-reportar');
+    }
+
+    async function processarBipagem(cod) {
+      if (!cod) return;
+      currentScannedCod = cod;
+      playBeep();
+
+      try {
+        const res = await fetch('/api/bipar-qrcode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cod: cod,
+            operator: `${currentOperator.nome} (${currentOperator.cargo})`
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.piece) {
+          const p = data.piece;
+          selectedPiece = p;
+          
+          // Exibir Box de Sucesso
+          const box = document.getElementById('box-resultado-bip');
+          document.getElementById('res-bip-tag').textContent = p.tag || p.cod;
+          document.getElementById('res-bip-cod').textContent = p.cod;
+          document.getElementById('res-bip-obra').textContent = `Obra: ${p.obra || 'RBR'}`;
+          document.getElementById('res-bip-fase-num').textContent = `Fase ${p.fase_atual} de 8`;
+          document.getElementById('res-bip-fase-nome').textContent = faseNomeDisplay(p.fase_atual ?? 0);
+          document.getElementById('res-bip-operador-log').textContent = `Operador: ${currentOperator.nome} • Registrado agora`;
+          box.classList.remove('hidden');
+
+          carregarProjetos();
+        } else {
+          alert(data.error || "Peça não localizada no sistema.");
+        }
+      } catch (err) {
+        alert("Erro de conexão ao processar bipagem.");
+      }
+    }
+
+    // Pedido do usuário 2026-09-22: poder corrigir/voltar a fase de uma peça
+    // manualmente (ex: bipou errado, ou peça precisa voltar pra retrabalho
+    // num setor anterior) — diferente da bipagem normal (que só avança).
+    function abrirModalCorrigirFase() {
+      if (!selectedPiece) { alert('Selecione uma peça primeiro.'); return; }
+      document.getElementById('cf-cod').textContent = selectedPiece.cod;
+      document.getElementById('cf-fase-atual').textContent = faseNomeDisplay(selectedPiece.fase_atual ?? 0);
+
+      const lista = document.getElementById('lista-fases-modal');
+      const faseAtualNum = selectedPiece.fase_atual ?? 0;
+      lista.innerHTML = FASES.map((nome, idx) => {
+        const n = idx + 1;
+        const ativa = n === faseAtualNum;
+        return `
+          <button onclick="confirmarCorrecaoFase(${n})" ${ativa ? 'disabled' : ''}
+            class="w-full text-left px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition
+              ${ativa ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 cursor-default'
+                      : 'bg-slate-900/70 border-slate-700 text-slate-200 hover:bg-slate-800 hover:border-amber-500/50'}">
+            <span>${nome}</span>
+            ${ativa ? '<span class="text-[9px] uppercase">Atual</span>' : ''}
+          </button>`;
+      }).join('');
+
+      document.getElementById('modal-corrigir-fase').classList.remove('hidden');
+    }
+
+    function fecharModalCorrigirFase() {
+      document.getElementById('modal-corrigir-fase').classList.add('hidden');
+    }
+
+    async function confirmarCorrecaoFase(novaFase) {
+      if (!selectedPiece) return;
+      const faseAntiga = selectedPiece.fase_atual ?? 0;
+      if (novaFase < faseAntiga) {
+        const ok = confirm(`Confirma VOLTAR a peça ${selectedPiece.cod} da fase "${faseNomeDisplay(faseAntiga)}" pra "${faseNomeDisplay(novaFase)}"?\n\nIsso fica registrado no histórico com seu nome.`);
+        if (!ok) return;
+      }
+      try {
+        const res = await fetch('/api/bipar-qrcode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cod: selectedPiece.cod,
+            fase: novaFase,
+            operator: `${currentOperator.nome} (${currentOperator.cargo})`
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.piece) {
+          selectedPiece = data.piece;
+          fecharModalCorrigirFase();
+          selecionarPeca(data.piece);
+          carregarProjetos();
+        } else {
+          alert(data.error || 'Não foi possível corrigir a fase.');
+        }
+      } catch (err) {
+        alert('Erro de conexão ao corrigir a fase.');
+      }
+    }
+
+    function biparManual() {
+      const input = document.getElementById('input-bip-manual');
+      const val = input.value.trim();
+      if (!val) return;
+      processarBipagem(val);
+      input.value = '';
+    }
+
+    function iniciarCameraScanner() {
+      document.getElementById('scanner-placeholder').classList.add('hidden');
+      if (html5QrScanner) {
+        try { html5QrScanner.stop(); } catch(e) {}
+      }
+
+      html5QrScanner = new Html5Qrcode("qr-reader");
+      const config = { fps: 15, qrbox: { width: 250, height: 250 } };
+
+      html5QrScanner.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText) => {
+          processarBipagem(decodedText);
+        },
+        (errorMessage) => {}
+      ).catch(err => {
+        alert("Não foi possível acessar a câmera do dispositivo.");
+        document.getElementById('scanner-placeholder').classList.remove('hidden');
+      });
+    }
+
+    async function enviarOcorrencia() {
+      const cod = document.getElementById('rep-select-peca').value;
+      const tipo = document.getElementById('rep-tipo-nc').value;
+      const desc = document.getElementById('rep-descricao').value.trim();
+      const grav = document.querySelector('input[name="rep-gravidade"]:checked')?.value || 'Média';
+
+      if (!cod || !desc) {
+        return alert("Por favor, preencha a descrição da ocorrência.");
+      }
+
+      playAlertSound();
+
+      try {
+        const res = await fetch('/api/report-issue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cod: cod,
+            operator: `${currentOperator.nome} (${currentOperator.cargo})`,
+            issue_type: tipo,
+            severity: grav,
+            description: desc
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`🚨 Ocorrência registrada com sucesso no histórico permanente!`);
+          document.getElementById('rep-descricao').value = '';
+          carregarProjetos();
+          navegarPara('tab-historico');
+        }
+      } catch (err) {
+        alert("Erro ao registrar ocorrência.");
+      }
+    }
+
+    async function carregarHistorico() {
+      const container = document.getElementById('timeline-container');
+      container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Carregando histórico permanente...</p>';
+
+      try {
+        const res = await fetch('/api/history');
+        const data = await res.json();
+        const logs = data.history || [];
+
+        if (logs.length === 0) {
+          container.innerHTML = `
+            <div class="glass-card rounded-2xl p-6 text-center text-slate-400">
+              <i data-lucide="clock" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+              <p class="text-xs">Nenhum evento registrado ainda.</p>
+            </div>
+          `;
+          lucide.createIcons();
+          return;
+        }
+
+        container.innerHTML = '';
+        logs.forEach(log => {
+          const isIssue = log.is_issue || (log.action && log.action.includes('Ocorrência'));
+          const item = document.createElement('div');
+          item.className = `glass-card rounded-2xl p-3.5 space-y-1.5 border ${
+            isIssue ? 'border-rose-900/60 bg-rose-950/20' : 'border-slate-800'
+          }`;
+
+          item.innerHTML = `
+            <div class="flex items-center justify-between text-[11px]">
+              <div class="flex items-center space-x-1.5">
+                <span class="w-2 h-2 rounded-full ${isIssue ? 'bg-rose-500' : 'bg-emerald-400'}"></span>
+                <strong class="text-white">${log.tag || log.cod}</strong>
+                <span class="text-slate-400">(${log.obra || 'RBR'})</span>
+              </div>
+              <span class="text-[10px] text-slate-400 font-mono">${log.timestamp || ''}</span>
+            </div>
+
+            <p class="text-xs font-bold ${isIssue ? 'text-rose-300' : 'text-emerald-300'}">${log.action || log.fase_nome}</p>
+            ${log.obs ? `<p class="text-[11px] text-slate-300 bg-slate-900/80 p-2 rounded-lg border border-slate-800">${log.obs}</p>` : ''}
+            
+            <div class="text-[10px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/60">
+              <span>👤 ${log.operator || 'Operador'}</span>
+              <span class="text-rbr-blueLight font-mono">${log.cod}</span>
+            </div>
+          `;
+          container.appendChild(item);
+        });
+        lucide.createIcons();
+      } catch (err) {
+        container.innerHTML = '<p class="text-xs text-rose-400 text-center py-4">Erro ao carregar histórico.</p>';
+      }
+    }
+
+    async function abrirModalTrueQR(p) {
+      if (!p) return;
+      document.getElementById('modal-qr-tag').textContent = p.tag || p.cod;
+      document.getElementById('modal-qr-cod').textContent = `Código PCP: ${p.cod}`;
+      document.getElementById('modal-qr-label-btn').href = `/api/qr/label-card/${encodeURIComponent(p.cod)}`;
+
+      try {
+        const res = await fetch(`/api/qr/piece/${encodeURIComponent(p.cod)}?size=400`);
+        const data = await res.json();
+        document.getElementById('modal-qr-img').src = data.data_url;
+        document.getElementById('modal-trueqr').classList.remove('hidden');
+      } catch (e) {
+        alert("Erro ao carregar TrueQR.");
+      }
+    }
+
+    function fecharModalTrueQR() {
+      document.getElementById('modal-trueqr').classList.add('hidden');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      atualizarDisplayOperador();
+      carregarProjetos();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

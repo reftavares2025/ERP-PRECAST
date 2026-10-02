@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-50 text-slate-800">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RBR OpenPrecast ERP — Sistema Industrial de Pré-Fabricados & TrueQR</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            rbr: {
+              blue: '#06628a',
+              blueDark: '#044866',
+              blueLight: '#e0f2fe',
+              orange: '#f19725',
+              orangeDark: '#d87f13',
+              orangeLight: '#fff7ed',
+              dark: '#1e293b',
+              gray: '#64748b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .clean-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    }
+    .rbr-gradient {
+      background: linear-gradient(135deg, #06628a 0%, #044866 100%);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.98); opacity: 0.9; }
+      50% { transform: scale(1.02); opacity: 1; }
+      100% { transform: scale(0.98); opacity: 0.9; }
+    }
+    .pulse-glow {
+      animation: pulse-ring 2.5s infinite ease-in-out;
+    }
+    /* Pedido do usuário: "Imprimir Etiqueta" deve imprimir SÓ a etiqueta,
+       não a página inteira. imprimirEtiqueta() clona o conteúdo da etiqueta
+       pra #etiqueta-print-clone (filho direto do body) antes de chamar
+       window.print() — assim não depende de "esconder" ancestrais que
+       podem estar dentro de abas ocultas por Tailwind (.hidden). */
+    #etiqueta-print-clone {
+      display: none;
+    }
+    @media print {
+      body.print-etiqueta-mode > *:not(#etiqueta-print-clone) {
+        display: none !important;
+      }
+      body.print-etiqueta-mode #etiqueta-print-clone {
+        display: block !important;
+        position: static;
+        margin: 0;
+        padding: 0;
+      }
+      body.print-etiqueta-mode #etiqueta-print-clone .bg-white {
+        box-shadow: none !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body class="h-full font-sans antialiased flex flex-col bg-slate-50 text-slate-800">
+
+  <!-- Clone só-de-impressão da etiqueta (fora de qualquer aba escondida) -->
+  <div id="etiqueta-print-clone"></div>
+
+  <!-- HEADER SUPERIOR -->
+  <header class="border-b border-slate-200 bg-white sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      
+      <!-- LOGO E TÍTULO -->
+      <div class="flex items-center space-x-4">
+        <img src="logo_rbr.png" alt="RBR Pré-Fabricados" class="h-12 w-auto object-contain">
+        <div class="border-l border-slate-200 pl-4">
+          <div class="flex items-center space-x-2">
+            <h1 class="text-base font-bold text-slate-900 tracking-wide leading-none">RBR OpenPrecast ERP</h1>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-rbr-blue to-rbr-orange text-white uppercase tracking-wider">TrueQR Integrated</span>
+          </div>
+          <p class="text-xs text-rbr-blue font-semibold mt-0.5">Rastreabilidade Total NBR 9062 • CAD Parser & Pranchas Reais</p>
+        </div>
+      </div>
+
+      <!-- BOTÕES SUPERIORES DE AÇÃO -->
+      <div class="flex items-center space-x-3">
+        <a href="/operador" target="_blank" class="px-3.5 py-2.5 text-xs font-black bg-gradient-to-r from-rbr-blue to-rbr-orange text-white rounded-xl shadow-md hover:opacity-95 transition flex items-center space-x-1.5 border border-white/20">
+          <i data-lucide="smartphone" class="w-4 h-4"></i>
+          <span>App Oficial Operador</span>
+        </a>
+
+        <button onclick="openUploadModal()" class="px-4 py-2.5 text-xs font-bold rbr-gradient text-white rounded-xl shadow-sm hover:opacity-95 transition flex items-center space-x-2">
+          <i data-lucide="file-up" class="w-4 h-4 text-rbr-orange"></i>
+          <span>Importar DWG / PDF Real</span>
+        </button>
+
+        <button onclick="switchTab('scanner')" class="px-3.5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm transition flex items-center space-x-1.5">
+          <i data-lucide="scan-line" class="w-4 h-4"></i>
+          <span>Bipar QR Code</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVEGAÇÃO PRINCIPAL -->
+  <nav class="bg-white border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 py-2 overflow-x-auto">
+      <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn px-4 py-2.5 text-xs font-bold rounded-lg flex items-center space-x-2 bg-rbr-blue text-white shadow-sm">
+        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+        <span>Dashboard de Rastreabilidade</span>
+      </button>
+      <button onclick="switchTab('scanner')" id="tab-scanner" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg flex items-center space-x-2 text-slate-600 hover:text-rbr-blue hover:bg-slate-100">
+        <i data-lucide="scan-barcode" class="w-4 h-4 text-emerald-600"></i>
+        <span>Estação de Bipagem Rápida</span>
+      </button>
+      <button onclick="switchTab('obras')" id="tab-obras" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg flex items-center space-x-2 text-slate-600 hover:text-rbr-blue hover:bg-slate-100">
+        <i data-lucide="building-2" class="w-4 h-4"></i>
+        <span>Obras Identificadas</span>
+      </button>
+      <button onclick="switchTab('pecas')" id="tab-pecas" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg flex items-center space-x-2 text-slate-600 hover:text-rbr-blue hover:bg-slate-100">
+        <i data-lucide="layers" class="w-4 h-4"></i>
+        <span>Peças & Pranchas Reais</span>
+      </button>
+      <button onclick="switchTab('etiquetas')" id="tab-etiquetas" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg flex items-center space-x-2 text-slate-600 hover:text-rbr-blue hover:bg-slate-100">
+        <i data-lucide="qr-code" class="w-4 h-4 text-rbr-orange"></i>
+        <span>Estúdio TrueQR & Etiquetas</span>
+      </button>
+      <button onclick="switchTab('relatorios')" id="tab-relatorios" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-lg flex items-center space-x-2 text-slate-600 hover:text-rbr-blue hover:bg-slate-100">
+        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+        <span>Relatórios & Produção PCP</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+    <!-- PAINEL DE PROCESSAMENTO REAL -->
+    <div id="dwg-reading-panel" class="clean-card p-5 rounded-2xl bg-sky-50 border border-sky-200 space-y-3 hidden">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <i data-lucide="cpu" class="w-7 h-7 text-rbr-blue animate-spin"></i>
+          <div>
+            <h4 class="text-xs font-bold text-slate-900" id="dwg-filename">Arquivo.pdf</h4>
+            <p class="text-[11px] text-rbr-blue font-semibold" id="dwg-status-text">Executando Motor CAD Real para extrair Peças, Pranchas Autênticas e TrueQR...</p>
+          </div>
+        </div>
+        <span class="px-3 py-1 bg-rbr-blue text-white text-xs font-bold rounded-full shadow-sm">
+          Leitura Real em Execução
+        </span>
+      </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="clean-card p-5 rounded-2xl border-l-4 border-l-rbr-blue">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+          <span>OBRAS CADASTRADAS</span>
+          <i data-lucide="building" class="w-5 h-5 text-rbr-blue"></i>
+        </div>
+        <div class="text-3xl font-extrabold text-slate-900" id="stat-obras">0</div>
+        <p class="text-xs font-semibold text-slate-400 mt-1">Identificadas no Projeto</p>
+      </div>
+
+      <div class="clean-card p-5 rounded-2xl border-l-4 border-l-rbr-orange">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+          <span>PEÇAS COM TRUEQR</span>
+          <i data-lucide="qr-code" class="w-5 h-5 text-rbr-orange"></i>
+        </div>
+        <div class="text-3xl font-extrabold text-slate-900" id="stat-pecas">0</div>
+        <p class="text-xs font-semibold text-rbr-blue mt-1">Pranchas Autênticas Vinculadas</p>
+      </div>
+
+      <div class="clean-card p-5 rounded-2xl border-l-4 border-l-sky-500">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+          <span>VOLUME TOTAL (m³)</span>
+          <i data-lucide="cylinder" class="w-5 h-5 text-sky-600"></i>
+        </div>
+        <div class="text-3xl font-extrabold text-slate-900" id="stat-volume">0,0 m³</div>
+        <p class="text-xs text-slate-400 mt-1">Soma Real dos Elementos</p>
+      </div>
+
+      <div class="clean-card p-5 rounded-2xl border-l-4 border-l-slate-700">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+          <span>PESO REAL TOTAL</span>
+          <i data-lucide="weight" class="w-5 h-5 text-slate-700"></i>
+        </div>
+        <div class="text-3xl font-extrabold text-slate-900" id="stat-peso">0,0 t</div>
+        <p class="text-xs font-semibold text-slate-400 mt-1">Densidade NBR 9062</p>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 1: DASHBOARD DE RASTREABILIDADE (8 FASES) -->
+    <section id="section-dashboard" class="space-y-6">
+      <div class="clean-card p-6 rounded-2xl space-y-5">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="git-commit" class="w-5 h-5 text-rbr-orange"></i>
+              <span>Funil de Rastreabilidade Industrial (8 Fases)</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">As peças avançam automaticamente pelas etapas conforme são bipadas via TrueQR</p>
+          </div>
+          <button onclick="clearSystemData()" class="px-3.5 py-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg transition flex items-center space-x-1.5 border border-rose-200">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Limpar Histórico</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs" id="funnel-container"></div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 2: ESTAÇÃO DE BIPAGEM RÁPIDA -->
+    <section id="section-scanner" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div class="clean-card p-6 rounded-2xl space-y-5 lg:col-span-1">
+          <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
+            <h2 class="text-sm font-extrabold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="scan-barcode" class="w-5 h-5 text-emerald-600"></i>
+              <span>Terminal de Bipagem</span>
+            </h2>
+            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">SCANNER ATIVO</span>
+          </div>
+
+          <p class="text-xs text-slate-500 leading-relaxed">
+            Aponte a <strong>pistola leitora de código de barras/QR</strong> ou digite o código/tag da peça e pressione <strong>ENTER</strong>. O sistema emitirá o bipe sonoro e atualizará a etapa no mesmo instante!
+          </p>
+
+          <form onsubmit="handleScannerSubmit(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Código Lido pelo Scanner / URL / Tag:</label>
+              <div class="relative">
+                <input type="text" id="scanner-input" placeholder="Ex: BM28 ou RBR_PCP:BM28" class="w-full px-3.5 py-3 rounded-xl border-2 border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-200 text-sm font-mono font-bold uppercase text-slate-900 bg-emerald-50/30" autofocus>
+                <button type="submit" class="absolute right-2 top-2 bottom-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs flex items-center space-x-1">
+                  <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                  <span>Bipar</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+              <span>Operador: <strong>Fábrica RBR</strong></span>
+              <span class="text-emerald-700 font-bold flex items-center space-x-1">
+                <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+                <span>Som Ativado</span>
+              </span>
+            </div>
+          </form>
+
+          <div id="last-scanned-card" class="hidden p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold text-emerald-800 uppercase">Sucesso na Bipagem</span>
+              <span class="text-[10px] text-slate-400 font-mono" id="last-scanned-time">Agora</span>
+            </div>
+            <h4 class="text-base font-black text-slate-900" id="last-scanned-tag">BM28</h4>
+            <div class="text-xs font-bold text-emerald-700" id="last-scanned-fase">Avançou para: 2. Armação Estrutural</div>
+          </div>
+        </div>
+
+        <div class="clean-card p-6 rounded-2xl space-y-4 lg:col-span-2">
+          <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
+            <h3 class="text-sm font-extrabold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="activity" class="w-4 h-4 text-rbr-blue"></i>
+              <span>Fila de Peças & Teste Rápido de Bipagem</span>
+            </h3>
+            <span class="text-xs text-slate-500 font-bold" id="scanner-pieces-count">0 peças prontas</span>
+          </div>
+
+          <div class="overflow-y-auto max-h-[420px] divide-y divide-slate-100 text-xs" id="scanner-piece-list"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SEÇÃO 3: OBRAS IDENTIFICADAS -->
+    <section id="section-obras" class="space-y-6 hidden">
+      <div class="clean-card p-6 rounded-2xl space-y-4">
+        <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2 border-b border-slate-200 pb-3">
+          <i data-lucide="building-2" class="w-5 h-5 text-rbr-blue"></i>
+          <span>Obras & Projetos Extraídos do Selo do CAD</span>
+        </h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-4">CÓD. OBRA</th>
+                <th class="p-4">CLIENTE / NOME DO PROJETO</th>
+                <th class="p-4">LOCALIZAÇÃO</th>
+                <th class="p-4">RESISTÊNCIA FCK</th>
+                <th class="p-4">PEÇAS IDENTIFICADAS</th>
+                <th class="p-4 text-center">AÇÕES</th>
+              </tr>
+            </thead>
+            <tbody id="table-obras-body" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 4: PEÇAS & PRANCHAS REAIS EXTRAÍDAS -->
+    <section id="section-pecas" class="space-y-6 hidden">
+      <div class="clean-card p-6 rounded-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="layers" class="w-5 h-5 text-rbr-orange"></i>
+              <span>Peças Extraídas com Pranchas & Prints Autênticos</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Visualização e download direto da prancha PDF original e do print/snapshot em alta resolução</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-4">CÓD. PCP</th>
+                <th class="p-4">TAG</th>
+                <th class="p-4">CLIENTE / OBRA</th>
+                <th class="p-4">PRODUTO</th>
+                <th class="p-4">SEÇÃO</th>
+                <th class="p-4">COMP.</th>
+                <th class="p-4">VOL.</th>
+                <th class="p-4">PESO</th>
+                <th class="p-4 text-center">PRANCHA & PRINT ORIGINAL</th>
+              </tr>
+            </thead>
+            <tbody id="table-pecas-body" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 5: ESTÚDIO TRUEQR & ETIQUETAS -->
+    <section id="section-etiquetas" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div class="clean-card p-6 rounded-2xl space-y-4 lg:col-span-1">
+          <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
+            <h2 class="text-sm font-extrabold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="sliders" class="w-4 h-4 text-rbr-blue"></i>
+              <span>Customizador TrueQR</span>
+            </h2>
+            <span class="text-[10px] font-bold text-rbr-orange uppercase">Motor TrueQR</span>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Peça Selecionada:</label>
+              <select id="select-qr-piece" onchange="handlePieceSelect(event)" class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-slate-50">
+                <option value="">Nenhuma peça cadastrada</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Paleta de Cores (Preset RBR):</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="setQRPreset('#06628a', '#ffffff')" class="p-2 rounded-lg border border-slate-300 flex items-center space-x-1.5 hover:bg-slate-100 font-bold">
+                  <span class="w-4 h-4 rounded-full bg-[#06628a] inline-block border"></span>
+                  <span>RBR Azul Navy</span>
+                </button>
+                <button type="button" onclick="setQRPreset('#f19725', '#ffffff')" class="p-2 rounded-lg border border-slate-300 flex items-center space-x-1.5 hover:bg-slate-100 font-bold">
+                  <span class="w-4 h-4 rounded-full bg-[#f19725] inline-block border"></span>
+                  <span>RBR Laranja</span>
+                </button>
+                <button type="button" onclick="setQRPreset('#0f172a', '#ffffff')" class="p-2 rounded-lg border border-slate-300 flex items-center space-x-1.5 hover:bg-slate-100 font-bold">
+                  <span class="w-4 h-4 rounded-full bg-[#0f172a] inline-block border"></span>
+                  <span>Slate Grafite</span>
+                </button>
+                <button type="button" onclick="setQRPreset('#000000', '#ffffff')" class="p-2 rounded-lg border border-slate-300 flex items-center space-x-1.5 hover:bg-slate-100 font-bold">
+                  <span class="w-4 h-4 rounded-full bg-black inline-block border"></span>
+                  <span>Zebra Alto Contraste</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Cor Frente (FG):</label>
+                <input type="color" id="qr-fg-color" value="#06628a" onchange="refreshTrueQRPreview()" class="w-full h-9 rounded-lg cursor-pointer border border-slate-300">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Cor Fundo (BG):</label>
+                <input type="color" id="qr-bg-color" value="#ffffff" onchange="refreshTrueQRPreview()" class="w-full h-9 rounded-lg cursor-pointer border border-slate-300">
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Nível de Correção de Erro (ECC):</label>
+              <select id="qr-ecc" onchange="refreshTrueQRPreview()" class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-slate-50">
+                <option value="H" selected>Alto - Nível H (30% recuperação - Chão de Fábrica)</option>
+                <option value="Q">Quartil - Nível Q (25% recuperação)</option>
+                <option value="M">Médio - Nível M (15% recuperação)</option>
+                <option value="L">Baixo - Nível L (7% recuperação)</option>
+              </select>
+            </div>
+
+            <div class="pt-2 space-y-2">
+              <button onclick="downloadTrueQRImage('png')" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl flex items-center justify-center space-x-2 shadow-sm">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Baixar TrueQR PNG Alta Resolução</span>
+              </button>
+              <button onclick="openMobileTracking()" class="w-full py-2 bg-rbr-blue/10 hover:bg-rbr-blue/20 text-rbr-blue font-bold rounded-xl flex items-center justify-center space-x-2 border border-rbr-blue/30">
+                <i data-lucide="smartphone" class="w-4 h-4"></i>
+                <span>Abrir Rastreamento Mobile (/track)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="clean-card p-6 rounded-2xl space-y-4 lg:col-span-2">
+          <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
+            <h2 class="text-sm font-extrabold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="qr-code" class="w-5 h-5 text-rbr-orange"></i>
+              <span>Visualizador de Etiqueta Térmica & Checklist de 8 Fases</span>
+            </h2>
+            <button onclick="imprimirEtiqueta()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center space-x-1.5">
+              <i data-lucide="printer" class="w-4 h-4"></i>
+              <span>Imprimir Etiqueta</span>
+            </button>
+          </div>
+
+          <div id="etiqueta-print-area" class="bg-white p-6 rounded-2xl border-2 border-slate-900 shadow-xl max-w-xl mx-auto font-mono text-xs text-slate-900 space-y-3">
+            <div class="border-2 border-slate-900 p-2.5 text-center bg-slate-50">
+              <h3 class="font-black text-sm tracking-wide">RBR PRÉ-FABRICADOS DE CONCRETO</h3>
+              <p class="text-[10px] font-bold text-rbr-blue">ETIQUETA DE RASTREABILIDADE TOTAL • TRUEQR</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-[11px] border-b border-slate-300 pb-2">
+              <div><strong>OBRA:</strong> <span id="lbl-obra" class="font-bold">---</span></div>
+              <div><strong>CLIENTE:</strong> <span id="lbl-cliente">---</span></div>
+              <div><strong>CIDADE / UF:</strong> <span id="lbl-cidade">---</span></div>
+              <div><strong>CÓD. PCP:</strong> <span class="font-black text-rbr-blue text-xs" id="lbl-cod">---</span></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-[11px] border-b border-slate-300 pb-2">
+              <div class="col-span-2 text-xs font-black text-slate-900 bg-slate-100 p-1 rounded">
+                PEÇA: <span id="lbl-tag">---</span> | PRODUTO: <span id="lbl-produto">---</span>
+              </div>
+              <div><strong>SEÇÃO:</strong> <span id="lbl-secao">---</span></div>
+              <div><strong>COMPRIMENTO:</strong> <span id="lbl-comp">---</span></div>
+              <div><strong>VOLUME:</strong> <span id="lbl-vol">---</span></div>
+              <div><strong>PESO REAL:</strong> <span id="lbl-peso">---</span></div>
+              <div><strong>TRAÇO / FCK:</strong> <span id="lbl-fck">---</span></div>
+              <div><strong>COBRIMENTO:</strong> 2,5 cm (CA-50)</div>
+            </div>
+
+            <div class="flex items-center justify-between pt-1 gap-4">
+              <div class="space-y-1 text-[10px]">
+                <p class="font-black text-slate-900 mb-1">FASES DE PRODUÇÃO (BIPAGEM TRUEQR):</p>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 font-bold text-slate-700" id="lbl-checklist-fases"></div>
+              </div>
+
+              <div class="flex flex-col items-center justify-center p-2 bg-white rounded-xl border-2 border-slate-900 shadow-sm">
+                <img id="img-trueqr-preview" src="" alt="TrueQR" class="w-28 h-28 object-contain">
+                <span class="text-[9px] font-mono mt-1 font-bold text-slate-700" id="lbl-qrcode">RBR_PCP:---</span>
+              </div>
+            </div>
+
+            <div class="border-t-2 border-slate-900 pt-1.5 text-[9px] text-slate-600 text-center font-bold">
+              RBR OpenPrecast ERP • TrueQR Engine Tracking • NBR 9062
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SEÇÃO 6: RELATÓRIOS & PRODUÇÃO PCP -->
+    <section id="section-relatorios" class="space-y-6 hidden">
+      <div class="clean-card p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-extrabold text-slate-900 flex items-center space-x-2">
+            <i data-lucide="clipboard-list" class="w-5 h-5 text-rbr-blue"></i>
+            <span>Relatório Industrial & Rastreabilidade de Produção (NBR 9062)</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Acompanhamento das peças lançadas e avanço pelas 8 fases de produção industrial.</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="exportarRelatorioCSV()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-sm flex items-center space-x-1.5 transition">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>Exportar CSV</span>
+          </button>
+          <button onclick="window.print()" class="px-3.5 py-2 bg-rbr-blue hover:bg-rbr-blueDark text-white font-bold text-xs rounded-xl shadow-sm flex items-center space-x-1.5 transition">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>Imprimir</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="clean-card p-6 rounded-2xl space-y-4">
+        <h3 class="text-sm font-extrabold text-slate-900 flex items-center space-x-2 border-b border-slate-200 pb-3">
+          <i data-lucide="factory" class="w-4 h-4 text-rbr-orange"></i>
+          <span>Distribuição das Peças por Área de Produção (8 Fases em Tempo Real)</span>
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 text-xs" id="cards-fases-producao"></div>
+      </div>
+
+      <div class="clean-card p-6 rounded-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+          <h3 class="text-sm font-extrabold text-slate-900 flex items-center space-x-2">
+            <i data-lucide="table" class="w-4 h-4 text-rbr-blue"></i>
+            <span>Relatório Detalhado de Peças & Status de Bipagem TrueQR</span>
+          </h3>
+          <span class="text-xs text-slate-500 font-bold" id="relatorio-total-summary">0 peças cadastradas</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-3">CÓD. PCP</th>
+                <th class="p-3">TAG PEÇA</th>
+                <th class="p-3">OBRA / CLIENTE</th>
+                <th class="p-3">PRODUTO</th>
+                <th class="p-3">SEÇÃO</th>
+                <th class="p-3">COMP.</th>
+                <th class="p-3">VOLUME</th>
+                <th class="p-3">PESO</th>
+                <th class="p-3">FASE ATUAL</th>
+                <th class="p-3 text-center">AÇÕES</th>
+              </tr>
+            </thead>
+            <tbody id="table-relatorio-body" class="divide-y divide-slate-200 font-medium"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL DE UPLOAD DE PROJETO COM ENTRADA MANUAL DE DADOS -->
+  <div id="modal-upload" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-xl bg-rbr-blue text-white flex items-center justify-center">
+            <i data-lucide="file-up" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-black text-slate-900">Importar Projeto DWG / DXF / PDF</h3>
+            <p class="text-[11px] text-slate-500">Extração de peças e pranchas autênticas</p>
+          </div>
+        </div>
+        <button onclick="closeUploadModal()" class="text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="submitRealFileUpload(event)" class="space-y-4 text-xs">
+        
+        <!-- SELEÇÃO DO ARQUIVO -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Selecione o Arquivo de Projeto (*.dwg, *.dxf, *.pdf):</label>
+          <input type="file" id="modal-file-input" accept=".dwg,.dxf,.pdf" required class="w-full p-2.5 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 cursor-pointer font-semibold text-slate-700">
+        </div>
+
+        <!-- CAMPOS MANUAIS OPCIONAIS -->
+        <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+          <p class="text-[11px] font-bold text-rbr-blue flex items-center space-x-1">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            <span>Identificação Manual do Projeto (Opcional):</span>
+          </p>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Cód. Obra / Projeto:</label>
+              <input type="text" id="manual-cod" placeholder="Ex: OBRA-106" class="w-full p-2 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Fck Concreto:</label>
+              <input type="text" id="manual-fck" placeholder="Ex: 35 MPa" class="w-full p-2 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Nome do Cliente / Obra:</label>
+            <input type="text" id="manual-cliente" placeholder="Ex: Fernando Scocha Engenharia" class="w-full p-2 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Local da Obra (Cidade / UF):</label>
+            <input type="text" id="manual-cidade" placeholder="Ex: São Paulo / SP" class="w-full p-2 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white">
+          </div>
+
+          <p class="text-[10px] text-slate-400 italic">Se estes campos ficarem em branco, o motor CAD extrairá os dados automaticamente do selo do projeto.</p>
+        </div>
+
+        <!-- AÇÕES -->
+        <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-200">
+          <button type="button" onclick="closeUploadModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl">Cancelar</button>
+          <button type="submit" class="px-5 py-2 rbr-gradient text-white font-bold rounded-xl flex items-center space-x-1.5 shadow-md">
+            <i data-lucide="upload" class="w-4 h-4 text-rbr-orange"></i>
+            <span>Processar Projeto & Extrair Peças</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE VISUALIZAÇÃO DO PRINT REAL DA PEÇA -->
+  <div id="modal-print-viewer" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl space-y-4 border border-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+            <i data-lucide="image" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-black text-slate-900" id="modal-print-title">Print Autêntico da Peça</h3>
+            <p class="text-[11px] text-slate-500">Desenho técnico extraído diretamente do arquivo original</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <a id="modal-print-pdf-link" href="#" target="_blank" class="px-3 py-1.5 bg-rbr-blue hover:bg-rbr-blueDark text-white font-bold text-xs rounded-xl flex items-center space-x-1">
+            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+            <span>Abrir PDF</span>
+          </a>
+          <button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-700 p-1">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-auto bg-slate-100 rounded-2xl p-4 flex items-center justify-center border border-slate-200">
+        <img id="modal-print-img" src="" alt="Print Real" class="max-w-full max-h-[60vh] object-contain shadow-md rounded-lg bg-white">
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE EDIÇÃO DE OBRA / CLIENTE -->
+  <div id="modal-edit-obra" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-xl bg-rbr-blue text-white flex items-center justify-center">
+            <i data-lucide="edit-3" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-black text-slate-900">Editar Dados da Obra / Cliente</h3>
+            <p class="text-[11px] text-slate-500">Atualiza o cadastro e sincroniza com todas as peças vinculadas</p>
+          </div>
+        </div>
+        <button onclick="closeEditObraModal()" class="text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="submitEditObra(event)" class="space-y-4 text-xs">
+        <input type="hidden" id="edit-old-cod">
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Cód. da Obra / Projeto:</label>
+            <input type="text" id="edit-obra-cod" required class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rbr-blue">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Resistência FCK:</label>
+            <input type="text" id="edit-obra-fck" placeholder="Ex: 35 MPa" class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rbr-blue">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nome do Cliente:</label>
+          <input type="text" id="edit-obra-cliente" required class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rbr-blue">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nome da Obra / Empreendimento:</label>
+          <input type="text" id="edit-obra-nome" class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rbr-blue">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Localização (Cidade / UF):</label>
+          <input type="text" id="edit-obra-cidade" placeholder="Ex: Angatuba / SP" class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rbr-blue">
+        </div>
+
+        <div class="flex items-center justify-between pt-3 border-t border-slate-200">
+          <button type="button" onclick="deleteObra()" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl flex items-center space-x-1 border border-rose-200">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Excluir Obra</span>
+          </button>
+          <div class="flex items-center space-x-2">
+            <button type="button" onclick="closeEditObraModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl">Cancelar</button>
+            <button type="submit" class="px-5 py-2 rbr-gradient text-white font-bold rounded-xl flex items-center space-x-1.5 shadow-md">
+              <i data-lucide="check" class="w-4 h-4 text-emerald-300"></i>
+              <span>Salvar Alterações</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE EDIÇÃO DE PEÇA / CONFIRMAÇÃO DE MEDIDAS -->
+  <div id="modal-edit-piece" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] flex flex-col p-6 shadow-2xl space-y-4 border border-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold">
+            <i data-lucide="edit-3" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-black text-slate-900" id="modal-edit-piece-title">Editar Peça & Confirmar Dimensões</h3>
+            <p class="text-[11px] text-slate-500">Ajuste de medidas, volume, peso e especificações da peça</p>
+          </div>
+        </div>
+        <button onclick="closeEditPieceModal()" class="text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="submitEditPiece(event)" class="space-y-4 text-xs overflow-y-auto pr-1">
+        <input type="hidden" id="edit-piece-cod">
+
+        <!-- Linha 1: Código e Tag -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Cód. PCP:</label>
+            <input type="text" id="edit-piece-cod-display" disabled class="w-full p-2.5 rounded-xl border border-slate-200 font-mono font-bold text-slate-500 bg-slate-100 cursor-not-allowed">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Tag / Nome no Desenho:</label>
+            <input type="text" id="edit-piece-tag" required class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rbr-blue">
+          </div>
+        </div>
+
+        <!-- Linha 2: Tipo de Produto e Quantidade -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Tipo de Produto / Categoria:</label>
+            <select id="edit-piece-produto" class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rbr-blue">
+              <option value="PILAR / PILAR">PILAR / PILAR</option>
+              <option value="VIGA / VIGA">VIGA / VIGA</option>
+              <option value="VIGA / BRAÇO">VIGA / BRAÇO</option>
+              <option value="FUNDAÇÃO / BLOCO">FUNDAÇÃO / BLOCO</option>
+              <option value="PAINEL / FECHAMENTO">PAINEL / FECHAMENTO</option>
+              <option value="ESCADA / ACESSO">ESCADA / ACESSO</option>
+              <option value="FUNDAÇÃO / ESTACA">FUNDAÇÃO / ESTACA</option>
+              <option value="OUTROS / PEÇA">OUTROS / PEÇA</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Quantidade de Peças (Qtd):</label>
+            <input type="number" id="edit-piece-qtd" min="1" step="1" value="1" required class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rbr-blue">
+          </div>
+        </div>
+
+        <!-- Bloco de Dimensões com Auto-Cálculo -->
+        <div class="p-3.5 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-extrabold text-amber-900 flex items-center space-x-1">
+              <i data-lucide="calculator" class="w-3.5 h-3.5 text-amber-700"></i>
+              <span>Dimensões Estruturais & Cálculo NBR 9062</span>
+            </span>
+            <span class="text-[10px] font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md font-mono">2.500 kg/m³</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Seção (LxA em cm):</label>
+              <input type="text" id="edit-piece-secao" placeholder="Ex: 30X40 ou 25X40" oninput="autoCalcPieceMetrics()" class="w-full p-2.5 rounded-xl border border-slate-300 font-mono font-bold text-slate-900 bg-white focus:ring-2 focus:ring-rbr-blue">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Comprimento (metros):</label>
+              <input type="number" id="edit-piece-comp" step="0.01" min="0" placeholder="Ex: 7.50" oninput="autoCalcPieceMetrics()" class="w-full p-2.5 rounded-xl border border-slate-300 font-mono font-bold text-slate-900 bg-white focus:ring-2 focus:ring-rbr-blue">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Volume Unitário (m³):</label>
+              <input type="number" id="edit-piece-vol" step="0.001" min="0" placeholder="Ex: 0.900" oninput="autoCalcPieceWeightFromVol()" class="w-full p-2.5 rounded-xl border border-slate-300 font-mono font-bold text-slate-900 bg-white focus:ring-2 focus:ring-rbr-blue">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Peso Unitário Real (kg):</label>
+              <input type="number" id="edit-piece-peso" step="0.1" min="0" placeholder="Ex: 2250.0" class="w-full p-2.5 rounded-xl border border-slate-300 font-mono font-bold text-slate-900 bg-white focus:ring-2 focus:ring-rbr-blue">
+            </div>
+          </div>
+          <p class="text-[10px] text-amber-900/80 leading-tight">
+            💡 <em>Ao preencher Seção e Comprimento, o volume e peso são calculados automaticamente. Se a peça tiver fôrma irregular, você pode digitar o volume/peso diretamente.</em>
+          </p>
+        </div>
+
+        <!-- Linha 3: Traço Fck e Fase Atual -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Traço / FCK:</label>
+            <input type="text" id="edit-piece-fck" placeholder="Ex: 35 MPa" class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rbr-blue">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Fase de Produção Atual:</label>
+            <select id="edit-piece-fase" class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rbr-blue">
+              <option value="0">0. Aguardando Bipagem Inicial</option>
+              <option value="1">1. Corte e Dobra de Aço</option>
+              <option value="2">2. Armação Estrutural</option>
+              <option value="3">3. Fôrmas & Embutidos</option>
+              <option value="4">4. Concretagem</option>
+              <option value="5">5. Cura & Desmolde</option>
+              <option value="6">6. Acabamento & CQ</option>
+              <option value="7">7. Expedição & Pátio</option>
+              <option value="8">8. Execução na Obra</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Linha 4: Vínculo Obra e Cliente -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Obra / Empreendimento:</label>
+            <input type="text" id="edit-piece-obra" class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Cliente:</label>
+            <input type="text" id="edit-piece-cliente" class="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50">
+          </div>
+        </div>
+
+        <!-- Ações do Rodapé -->
+        <div class="flex items-center justify-between pt-3 border-t border-slate-200">
+          <button type="button" onclick="deletePiece()" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl flex items-center space-x-1 border border-rose-200">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Excluir Peça</span>
+          </button>
+          <div class="flex items-center space-x-2">
+            <button type="button" onclick="closeEditPieceModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl">Cancelar</button>
+            <button type="submit" class="px-5 py-2 rbr-gradient text-white font-bold rounded-xl flex items-center space-x-1.5 shadow-md">
+              <i data-lucide="check" class="w-4 h-4 text-emerald-300"></i>
+              <span>Salvar Peça</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT PRINCIPAL -->
+  <script>
+    lucide.createIcons();
+
+    // Formata dimensão/volume: nunca mostra "null" cru — quando o motor CAD
+    // não achou o dado real no desenho, mostra badge "A CONFIRMAR" em vez de
+    // fingir que tem um número (regra pedida pelo usuário: zero invenção).
+    function fmtDim(valor, sufixo, cod) {
+      if (valor === null || valor === undefined || valor === '') {
+        if (cod) {
+          return `<button type="button" onclick="openEditPieceModal('${encodeURIComponent(cod)}')" title="Clique para confirmar e preencher esta dimensão" class="inline-flex items-center space-x-1 px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded text-[10px] font-extrabold tracking-wide transition cursor-pointer shadow-xs"><span>A CONFIRMAR</span><i data-lucide="edit-3" class="w-2.5 h-2.5 text-amber-700"></i></button>`;
+        }
+        return '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded text-[10px] font-extrabold tracking-wide">A CONFIRMAR</span>';
+      }
+      return `${valor}${sufixo ? ' ' + sufixo : ''}`;
+    }
+
+    // Pedido do usuário: "Imprimir Etiqueta" só pode sair a etiqueta na
+    // impressora, não a página inteira. Clona o conteúdo atual da etiqueta
+    // pra um container isolado, direto filho do <body>, imprime só ele, e
+    // desfaz tudo depois (onafterprint, com fallback por timeout caso o
+    // navegador não dispare o evento).
+    function imprimirEtiqueta() {
+      const origem = document.getElementById('etiqueta-print-area');
+      const clone = document.getElementById('etiqueta-print-clone');
+      if (!origem || !clone) { window.print(); return; }
+
+      clone.innerHTML = origem.outerHTML;
+      document.body.classList.add('print-etiqueta-mode');
+
+      const limpar = () => {
+        document.body.classList.remove('print-etiqueta-mode');
+        clone.innerHTML = '';
+        window.removeEventListener('afterprint', limpar);
+      };
+      window.addEventListener('afterprint', limpar);
+      setTimeout(limpar, 5000); // fallback se o navegador não disparar afterprint
+
+      window.print();
+    }
+
+    const FASES_NOMES = [
+      "1. Corte e Dobra de Aço",
+      "2. Armação Estrutural",
+      "3. Fôrmas & Embutidos",
+      "4. Concretagem",
+      "5. Cura & Desmolde",
+      "6. Acabamento & CQ",
+      "7. Expedição & Pátio",
+      "8. Execução na Obra"
+    ];
+
+    // fase_atual=0 = peça lançada mas ainda não bipada (fora da linha).
+    // FASES_NOMES[0-1] daria índice -1 (mostrava "8. Execução na Obra" errado)
+    // — esse helper evita isso em todo lugar que mostra o nome da fase.
+    function faseNomeDisplay(n) {
+      if (n === 0 || n === null || n === undefined) return 'Aguardando Bipagem';
+      return FASES_NOMES[n - 1] || `Fase ${n}`;
+    }
+
+    const FASES_CORES = {
+      1: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+      2: 'bg-emerald-100 text-emerald-900 border-emerald-400',
+      3: 'bg-sky-50 text-sky-800 border-sky-300',
+      4: 'bg-sky-100 text-sky-900 border-sky-400',
+      5: 'bg-amber-50 text-amber-800 border-amber-300',
+      6: 'bg-amber-100 text-amber-900 border-amber-400',
+      7: 'bg-purple-50 text-purple-800 border-purple-300',
+      8: 'bg-purple-100 text-purple-900 border-purple-400'
+    };
+
+    let state = {
+      obras: [],
+      pecas: [],
+      selectedPiece: null
+    };
+
+    function playBeep() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.15);
+      } catch (e) {}
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+      const targetSec = document.getElementById('section-' + tabId);
+      if (targetSec) targetSec.classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-rbr-blue', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-600', 'hover:text-rbr-blue', 'hover:bg-slate-100');
+      });
+
+      const activeBtn = document.getElementById('tab-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-600', 'hover:text-rbr-blue', 'hover:bg-slate-100');
+        activeBtn.classList.add('bg-rbr-blue', 'text-white', 'shadow-sm');
+      }
+
+      if (tabId === 'scanner') {
+        setTimeout(() => {
+          const inp = document.getElementById('scanner-input');
+          if (inp) inp.focus();
+        }, 100);
+      }
+
+      lucide.createIcons();
+    }
+
+    function openUploadModal() {
+      document.getElementById('modal-upload').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeUploadModal() {
+      document.getElementById('modal-upload').classList.add('hidden');
+    }
+
+    function showPiecePrint(cod, tag) {
+      const modal = document.getElementById('modal-print-viewer');
+      document.getElementById('modal-print-title').innerText = `Print Real: ${tag || cod} (${cod})`;
+      document.getElementById('modal-print-img').src = `/pranchas/print_${encodeURIComponent(cod)}.png`;
+      document.getElementById('modal-print-pdf-link').href = `/pranchas/prancha_${encodeURIComponent(cod)}.pdf`;
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closePrintModal() {
+      document.getElementById('modal-print-viewer').classList.add('hidden');
+    }
+
+    function openEditObraModal(encodedCod) {
+      const cod = decodeURIComponent(encodedCod);
+      const obra = state.obras.find(o => o.cod === cod) || { cod: cod, cliente: '', nome: '', cidade_uf: '', fck: '35 MPa' };
+
+      document.getElementById('edit-old-cod').value = obra.cod;
+      document.getElementById('edit-obra-cod').value = obra.cod;
+      document.getElementById('edit-obra-cliente').value = obra.cliente || '';
+      document.getElementById('edit-obra-nome').value = obra.nome || obra.cliente || '';
+      document.getElementById('edit-obra-cidade').value = obra.cidade_uf || '';
+      document.getElementById('edit-obra-fck').value = obra.fck || '35 MPa';
+
+      document.getElementById('modal-edit-obra').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeEditObraModal() {
+      document.getElementById('modal-edit-obra').classList.add('hidden');
+    }
+
+    async function submitEditObra(e) {
+      e.preventDefault();
+      const oldCod = document.getElementById('edit-old-cod').value;
+      const newCod = document.getElementById('edit-obra-cod').value.trim();
+      const cliente = document.getElementById('edit-obra-cliente').value.trim();
+      const nome = document.getElementById('edit-obra-nome').value.trim();
+      const cidade_uf = document.getElementById('edit-obra-cidade').value.trim();
+      const fck = document.getElementById('edit-obra-fck').value.trim();
+
+      try {
+        const res = await fetch('/api/obras/edit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            old_cod: oldCod,
+            new_cod: newCod,
+            cliente: cliente,
+            nome: nome,
+            cidade_uf: cidade_uf,
+            fck: fck
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          state.obras = data.all_obras || [];
+          state.pecas = data.all_pieces || [];
+          closeEditObraModal();
+          updateUI();
+          alert('✅ Obra e dados atualizados com sucesso!');
+        } else {
+          alert('⚠️ Erro ao salvar: ' + (data.error || 'Falha na atualização.'));
+        }
+      } catch (err) {
+        alert('❌ Erro de conexão com o servidor.');
+      }
+    }
+
+    async function deleteObra() {
+      const oldCod = document.getElementById('edit-old-cod').value;
+      if (!confirm(`Tem certeza que deseja excluir a obra "${oldCod}" e todas as suas peças?`)) return;
+
+      try {
+        const res = await fetch('/api/obras/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cod: oldCod })
+        });
+        const data = await res.json();
+        if (data.success) {
+          state.obras = data.all_obras || [];
+          state.pecas = data.all_pieces || [];
+          if (state.selectedPiece && state.selectedPiece.obra === oldCod) {
+            state.selectedPiece = state.pecas[0] || null;
+          }
+          closeEditObraModal();
+          updateUI();
+          alert('🗑️ Obra excluída com sucesso.');
+        } else {
+          alert('⚠️ Erro ao excluir: ' + (data.error || 'Falha ao excluir.'));
+        }
+      } catch (err) {
+        alert('❌ Erro de conexão com o servidor.');
+      }
+    }
+
+    function openEditPieceModal(encodedCod) {
+      const cod = decodeURIComponent(encodedCod);
+      const p = state.pecas.find(item => item.cod === cod);
+      if (!p) return;
+
+      document.getElementById('edit-piece-cod').value = p.cod;
+      document.getElementById('edit-piece-cod-display').value = p.cod;
+      document.getElementById('edit-piece-tag').value = p.tag || p.cod;
+      document.getElementById('edit-piece-produto').value = p.produto || 'PILAR / PILAR';
+      document.getElementById('edit-piece-qtd').value = p.qtd || 1;
+      document.getElementById('edit-piece-secao').value = p.secao || '';
+      document.getElementById('edit-piece-comp').value = p.comp !== null && p.comp !== undefined ? p.comp : '';
+      document.getElementById('edit-piece-vol').value = p.vol !== null && p.vol !== undefined ? p.vol : '';
+      document.getElementById('edit-piece-peso').value = p.peso !== null && p.peso !== undefined ? p.peso : '';
+      document.getElementById('edit-piece-fck').value = p.fck || '35 MPa';
+      document.getElementById('edit-piece-fase').value = p.fase_atual !== undefined ? p.fase_atual : 0;
+      document.getElementById('edit-piece-obra').value = p.obra || '';
+      document.getElementById('edit-piece-cliente').value = p.cliente || '';
+      document.getElementById('modal-edit-piece-title').innerText = `Editar Peça: ${p.tag || p.cod} (${p.cod})`;
+
+      document.getElementById('modal-edit-piece').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeEditPieceModal() {
+      document.getElementById('modal-edit-piece').classList.add('hidden');
+    }
+
+    function autoCalcPieceMetrics() {
+      const secaoStr = document.getElementById('edit-piece-secao').value.trim();
+      const compStr = document.getElementById('edit-piece-comp').value.trim();
+      
+      const match = secaoStr.match(/(\d{2,3})\s*[xX]\s*(\d{2,3})/);
+      const compVal = parseFloat(compStr.replace(',', '.'));
+
+      if (match && !isNaN(compVal) && compVal > 0) {
+        const largCm = parseFloat(match[1]);
+        const altCm = parseFloat(match[2]);
+        const volVal = Math.round((largCm / 100.0) * (altCm / 100.0) * compVal * 1000) / 1000;
+        const pesoVal = Math.round(volVal * 2500 * 10) / 10;
+
+        document.getElementById('edit-piece-vol').value = volVal;
+        document.getElementById('edit-piece-peso').value = pesoVal;
+      }
+    }
+
+    function autoCalcPieceWeightFromVol() {
+      const volStr = document.getElementById('edit-piece-vol').value.trim();
+      const volVal = parseFloat(volStr.replace(',', '.'));
+      if (!isNaN(volVal) && volVal > 0) {
+        const pesoVal = Math.round(volVal * 2500 * 10) / 10;
+        document.getElementById('edit-piece-peso').value = pesoVal;
+      }
+    }
+
+    async function submitEditPiece(e) {
+      e.preventDefault();
+      const cod = document.getElementById('edit-piece-cod').value;
+      const tag = document.getElementById('edit-piece-tag').value.trim();
+      const produto = document.getElementById('edit-piece-produto').value;
+      const qtd = document.getElementById('edit-piece-qtd').value;
+      const secao = document.getElementById('edit-piece-secao').value.trim();
+      const comp = document.getElementById('edit-piece-comp').value.trim();
+      const vol = document.getElementById('edit-piece-vol').value.trim();
+      const peso = document.getElementById('edit-piece-peso').value.trim();
+      const fck = document.getElementById('edit-piece-fck').value.trim();
+      const fase_atual = parseInt(document.getElementById('edit-piece-fase').value);
+      const obra = document.getElementById('edit-piece-obra').value.trim();
+      const cliente = document.getElementById('edit-piece-cliente').value.trim();
+
+      try {
+        const res = await fetch('/api/pieces/edit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cod: cod,
+            tag: tag,
+            produto: produto,
+            qtd: qtd,
+            secao: secao || null,
+            comp: comp !== '' ? comp : null,
+            vol: vol !== '' ? vol : null,
+            peso: peso !== '' ? peso : null,
+            fck: fck || '35 MPa',
+            fase_atual: isNaN(fase_atual) ? 0 : fase_atual,
+            obra: obra,
+            cliente: cliente
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          state.obras = data.all_obras || state.obras;
+          state.pecas = data.all_pieces || state.pecas;
+          const updated = state.pecas.find(p => p.cod === cod);
+          if (updated && state.selectedPiece && state.selectedPiece.cod === cod) {
+            state.selectedPiece = updated;
+          }
+          closeEditPieceModal();
+          updateUI();
+          alert(`✅ Peça "${tag || cod}" atualizada com sucesso!`);
+        } else {
+          alert('⚠️ Erro ao salvar peça: ' + (data.error || 'Falha na atualização.'));
+        }
+      } catch (err) {
+        alert('❌ Erro de conexão com o servidor.');
+      }
+    }
+
+    async function deletePiece() {
+      const cod = document.getElementById('edit-piece-cod').value;
+      if (!confirm(`Tem certeza que deseja excluir a peça "${cod}"?`)) return;
+
+      try {
+        const res = await fetch('/api/pieces/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cod: cod })
+        });
+        const data = await res.json();
+        if (data.success) {
+          state.obras = data.all_obras || [];
+          state.pecas = data.all_pieces || [];
+          if (state.selectedPiece && state.selectedPiece.cod === cod) {
+            state.selectedPiece = state.pecas[0] || null;
+          }
+          closeEditPieceModal();
+          updateUI();
+          alert(`🗑️ Peça "${cod}" excluída com sucesso.`);
+        } else {
+          alert('⚠️ Erro ao excluir: ' + (data.error || 'Falha ao excluir.'));
+        }
+      } catch (err) {
+        alert('❌ Erro de conexão com o servidor.');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadSavedProjects);
+
+    async function loadSavedProjects() {
+      try {
+        const res = await fetch('/api/projects');
+        const data = await res.json();
+        if (data.success) {
+          state.obras = data.obras || [];
+          state.pecas = data.pieces || [];
+          if (state.pecas.length > 0 && !state.selectedPiece) {
+            state.selectedPiece = state.pecas[0];
+          }
+          updateUI();
+        }
+      } catch (err) {
+        console.error('Erro ao carregar projetos:', err);
+      }
+    }
+
+    async function clearSystemData() {
+      if (confirm('Tem certeza que deseja limpar todo o histórico?')) {
+        await fetch('/api/clear', { method: 'DELETE' });
+        state.obras = [];
+        state.pecas = [];
+        state.selectedPiece = null;
+        updateUI();
+        alert('🧹 Histórico zerado com sucesso!');
+      }
+    }
+
+    async function submitRealFileUpload(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('modal-file-input');
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Selecione um arquivo.');
+        return;
+      }
+
+      const customCod = document.getElementById('manual-cod').value.trim();
+      const customCliente = document.getElementById('manual-cliente').value.trim();
+      const customCidade = document.getElementById('manual-cidade').value.trim();
+      const customFck = document.getElementById('manual-fck').value.trim();
+
+      closeUploadModal();
+      document.getElementById('dwg-reading-panel').classList.remove('hidden');
+      document.getElementById('dwg-filename').innerText = file.name;
+      document.getElementById('dwg-status-text').innerText = 'Executando Motor CAD Real para extrair Peças, Pranchas Autênticas e TrueQR de ' + file.name + '...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      if (customCod) formData.append('custom_cod', customCod);
+      if (customCliente) formData.append('custom_cliente', customCliente);
+      if (customCidade) formData.append('custom_cidade', customCidade);
+      if (customFck) formData.append('custom_fck', customFck);
+
+      try {
+        const response = await fetch('/api/parse-cad', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.obra) {
+          state.obras = data.all_obras || state.obras;
+          state.pecas = data.all_pieces || state.pecas;
+          if (data.pieces && data.pieces.length > 0) {
+            state.selectedPiece = data.pieces[0];
+          }
+          updateUI();
+          document.getElementById('dwg-reading-panel').classList.add('hidden');
+
+          alert(`✅ PROJETO IMPORTADO COM SUCESSO!\n\n` +
+                `🏗️ Obra / Cliente: ${data.obra.nome || data.obra.cliente}\n` +
+                `📍 Local: ${data.obra.cidade_uf || 'São Paulo / SP'}\n` +
+                `📦 Peças Extraídas: ${data.pieces.length} peças encontradas!\n` +
+                `📄 As pranchas originais e prints foram extraídos.`);
+
+          switchTab('pecas');
+        } else {
+          document.getElementById('dwg-reading-panel').classList.add('hidden');
+          alert('⚠️ Aviso ao processar: ' + (data.error || 'Não foi possível extrair os dados.'));
+        }
+      } catch (err) {
+        document.getElementById('dwg-reading-panel').classList.add('hidden');
+        alert('❌ Erro de conexão com o servidor.');
+      }
+    }
+
+    async function biparPCP(cod) {
+      if (!cod) return;
+      playBeep();
+      try {
+        const res = await fetch('/api/bipar-qrcode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cod: cod })
+        });
+        const data = await res.json();
+        if (data.success) {
+          state.obras = data.all_obras || state.obras;
+          state.pecas = data.all_pieces || state.pecas;
+          if (data.piece) {
+            state.selectedPiece = data.piece;
+            const lastCard = document.getElementById('last-scanned-card');
+            if (lastCard) {
+              lastCard.classList.remove('hidden');
+              document.getElementById('last-scanned-tag').innerText = `${data.piece.tag || data.piece.cod} (${data.piece.cod})`;
+              document.getElementById('last-scanned-fase').innerText = `Avançou para: ${faseNomeDisplay(data.piece.fase_atual ?? 0)}`;
+              document.getElementById('last-scanned-time').innerText = new Date().toLocaleTimeString();
+            }
+          }
+          updateUI();
+        } else {
+          alert(`⚠️ ${data.error}`);
+        }
+      } catch (err) {
+        alert('❌ Erro ao enviar bipagem ao servidor.');
+      }
+    }
+
+    function handleScannerSubmit(e) {
+      e.preventDefault();
+      const inp = document.getElementById('scanner-input');
+      const val = inp.value.trim();
+      if (!val) return;
+      biparPCP(val);
+      inp.value = '';
+      inp.focus();
+    }
+
+    function setQRPreset(fg, bg) {
+      document.getElementById('qr-fg-color').value = fg;
+      document.getElementById('qr-bg-color').value = bg;
+      refreshTrueQRPreview();
+    }
+
+    function handlePieceSelect(e) {
+      const cod = e.target.value;
+      const piece = state.pecas.find(p => p.cod === cod);
+      if (piece) {
+        state.selectedPiece = piece;
+        refreshTrueQRPreview();
+      }
+    }
+
+    async function refreshTrueQRPreview() {
+      const p = state.selectedPiece;
+      if (!p) return;
+
+      const fg = document.getElementById('qr-fg-color').value;
+      const bg = document.getElementById('qr-bg-color').value;
+      const ec = document.getElementById('qr-ecc').value;
+
+      try {
+        const res = await fetch(`/api/qr/piece/${encodeURIComponent(p.cod)}?fg=${encodeURIComponent(fg)}&bg=${encodeURIComponent(bg)}&ec=${encodeURIComponent(ec)}&size=300`);
+        const data = await res.json();
+        if (data.success && data.data_url) {
+          const imgPreview = document.getElementById('img-trueqr-preview');
+          if (imgPreview) imgPreview.src = data.data_url;
+        }
+      } catch (err) {
+        console.error('Erro ao gerar TrueQR preview:', err);
+      }
+      updateLabelView(p);
+    }
+
+    function updateLabelView(p) {
+      if (!p) {
+        p = {
+          cod: '---',
+          tag: 'NENHUMA PEÇA',
+          obra: 'AGUARDANDO PROJETO',
+          cliente: 'NENHUM PROJETO CARREGADO',
+          cidade: '---',
+          produto: '---',
+          secao: '---',
+          comp: 0,
+          vol: 0,
+          peso: 0,
+          fck: '---',
+          fase_atual: 1
+        };
+      }
+      document.getElementById('lbl-obra').innerText = p.obra || p.cliente || '---';
+      document.getElementById('lbl-cliente').innerText = p.cliente || '---';
+      document.getElementById('lbl-cidade').innerText = p.cidade || '---';
+      document.getElementById('lbl-cod').innerText = p.cod || '---';
+      document.getElementById('lbl-tag').innerText = p.tag || '---';
+      document.getElementById('lbl-produto').innerText = p.produto || '---';
+      document.getElementById('lbl-secao').innerText = p.secao || '---';
+      document.getElementById('lbl-comp').innerText = (p.comp || 0) + ' m';
+      document.getElementById('lbl-vol').innerText = (p.vol || 0) + ' m³';
+      document.getElementById('lbl-peso').innerText = (p.peso || 0).toLocaleString('pt-BR') + ' kg';
+      document.getElementById('lbl-fck').innerText = p.fck || '35 MPa';
+      document.getElementById('lbl-qrcode').innerText = 'RBR_PCP:' + (p.cod || '---');
+
+      const fAtual = parseInt(p.fase_atual ?? 1);
+      const chkContainer = document.getElementById('lbl-checklist-fases');
+      if (chkContainer) {
+        chkContainer.innerHTML = FASES_NOMES.map((fn, idx) => {
+          const isDone = (idx + 1) <= fAtual;
+          const mark = isDone ? '[X]' : '[ ]';
+          const color = isDone ? 'text-emerald-700 font-extrabold' : 'text-slate-600 font-semibold';
+          return `<span class="${color}">${mark} ${fn}</span>`;
+        }).join('');
+      }
+    }
+
+    function downloadTrueQRImage(format) {
+      const img = document.getElementById('img-trueqr-preview');
+      if (!img || !img.src) {
+        alert('Selecione uma peça primeiro.');
+        return;
+      }
+      const cod = state.selectedPiece ? state.selectedPiece.cod : 'RBR_QR';
+      const a = document.createElement('a');
+      a.href = img.src;
+      a.download = `TrueQR_${cod}.${format}`;
+      a.click();
+    }
+
+    function openMobileTracking() {
+      if (!state.selectedPiece) {
+        alert('Selecione uma peça primeiro.');
+        return;
+      }
+      window.open(`/track?cod=${encodeURIComponent(state.selectedPiece.cod)}`, '_blank');
+    }
+
+    function updateUI() {
+      document.getElementById('stat-obras').innerText = state.obras.length;
+      document.getElementById('stat-pecas').innerText = state.pecas.length;
+
+      let totalVol = state.pecas.reduce((acc, p) => acc + (p.vol || 0), 0);
+      let totalPeso = state.pecas.reduce((acc, p) => acc + (p.peso || 0), 0) / 1000.0;
+
+      document.getElementById('stat-volume').innerText = totalVol.toFixed(1).replace('.', ',') + ' m³';
+      document.getElementById('stat-peso').innerText = totalPeso.toFixed(1).replace('.', ',') + ' t';
+
+      let totalP = state.pecas.length;
+
+      // 1. Funil de 8 Fases
+      const funnelContainer = document.getElementById('funnel-container');
+      if (funnelContainer) {
+        funnelContainer.innerHTML = FASES_NOMES.map((fname, idx) => {
+          const faseNum = idx + 1;
+          const countDone = totalP > 0 ? state.pecas.filter(p => (p.fase_atual ?? 1) >= faseNum).length : 0;
+          const pct = totalP > 0 ? Math.round((countDone / totalP) * 100) : 0;
+          return `
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div class="flex justify-between font-bold">
+                <span class="text-rbr-blue">${fname}</span>
+                <span class="text-slate-500 font-bold">${countDone}/${totalP} (${pct}%)</span>
+              </div>
+              <div class="w-full bg-slate-200 rounded-full h-2">
+                <div class="bg-gradient-to-r from-rbr-blue to-emerald-500 h-2 rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+              </div>
+            </div>`;
+        }).join('');
+      }
+
+      // 2. Select Piece in TrueQR Studio
+      const selectPiece = document.getElementById('select-qr-piece');
+      if (selectPiece) {
+        if (state.pecas.length === 0) {
+          selectPiece.innerHTML = '<option value="">Nenhuma peça cadastrada</option>';
+        } else {
+          selectPiece.innerHTML = state.pecas.map(p => `
+            <option value="${p.cod}" ${state.selectedPiece && state.selectedPiece.cod === p.cod ? 'selected' : ''}>
+              ${p.cod} - ${p.tag} (${p.produto}) [Fase ${p.fase_atual ?? 1}/8]
+            </option>
+          `).join('');
+        }
+      }
+
+      // 3. Estação de Bipagem Rápida Lista
+      const scannerPiecesCount = document.getElementById('scanner-pieces-count');
+      if (scannerPiecesCount) scannerPiecesCount.innerText = `${totalP} peças disponíveis`;
+
+      const scannerList = document.getElementById('scanner-piece-list');
+      if (scannerList) {
+        if (state.pecas.length === 0) {
+          scannerList.innerHTML = `
+            <div class="p-8 text-center text-slate-400">
+              <i data-lucide="scan-line" class="w-8 h-8 mx-auto text-slate-300 mb-2"></i>
+              <p class="font-bold">Nenhuma peça carregada.</p>
+              <p class="text-[11px]">Faça o upload do arquivo CAD para habilitar a bipagem.</p>
+            </div>`;
+        } else {
+          scannerList.innerHTML = state.pecas.map(p => {
+            const fNum = p.fase_atual ?? 1;
+            const fNome = faseNomeDisplay(fNum);
+            const isDone = fNum >= 8;
+            return `
+              <div class="p-3 flex items-center justify-between hover:bg-slate-50 transition rounded-xl">
+                <div class="flex items-center space-x-3">
+                  <div class="w-8 h-8 rounded-lg bg-rbr-blue/10 text-rbr-blue flex items-center justify-center font-bold font-mono text-xs">
+                    ${p.cod}
+                  </div>
+                  <div>
+                    <h4 class="font-bold text-slate-900">${p.tag} <span class="text-[11px] font-normal text-slate-500">(${p.produto} - ${p.secao})</span></h4>
+                    <p class="text-[11px] font-semibold text-emerald-700">📍 Fase Atual: ${fNome}</p>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button onclick="showPiecePrint('${p.cod}', '${p.tag}')" title="Ver Print Real" class="p-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold">
+                    <i data-lucide="image" class="w-4 h-4"></i>
+                  </button>
+                  <a href="/track?cod=${encodeURIComponent(p.cod)}" target="_blank" title="Abrir Página Mobile TrueQR" class="p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold">
+                    <i data-lucide="smartphone" class="w-4 h-4"></i>
+                  </a>
+                  <button onclick="biparPCP('${p.cod}')" class="px-3 py-1.5 ${isDone ? 'bg-slate-200 text-slate-500' : 'bg-emerald-600 hover:bg-emerald-700 text-white'} rounded-lg font-bold text-xs flex items-center space-x-1 shadow-sm transition">
+                    <i data-lucide="fast-forward" class="w-3.5 h-3.5"></i>
+                    <span>${isDone ? 'Finalizado' : 'Bipar / Avançar'}</span>
+                  </button>
+                </div>
+              </div>`;
+          }).join('');
+        }
+      }
+
+      // 4. Tabela Obras
+      const tbodyObras = document.getElementById('table-obras-body');
+      if (tbodyObras) {
+        if (state.obras.length === 0) {
+          tbodyObras.innerHTML = `
+            <tr>
+              <td colspan="6" class="p-8 text-center text-slate-400">
+                <p class="font-bold text-sm text-slate-600">Nenhuma obra cadastrada.</p>
+              </td>
+            </tr>`;
+        } else {
+          tbodyObras.innerHTML = state.obras.map(o => {
+            const countPieces = state.pecas.filter(p => p.obra === o.nome || p.cliente === o.cliente || p.obra === o.cliente).length || state.pecas.length;
+            return `
+            <tr class="hover:bg-slate-50 transition">
+              <td class="p-4 font-extrabold text-rbr-blue">${o.cod}</td>
+              <td class="p-4 font-bold text-slate-900">${o.cliente || o.nome}</td>
+              <td class="p-4 text-slate-700">${o.cidade_uf || 'São Paulo / SP'}</td>
+              <td class="p-4 font-bold text-emerald-700">${o.fck || '35 MPa'}</td>
+              <td class="p-4 font-bold text-rbr-orangeDark">${countPieces} peças lidas</td>
+              <td class="p-4 text-center">
+                <button onclick="openEditObraModal('${encodeURIComponent(o.cod)}')" class="px-3 py-1.5 bg-rbr-blue/10 hover:bg-rbr-blue/20 text-rbr-blue border border-rbr-blue/30 rounded-lg font-bold text-xs flex items-center justify-center space-x-1 mx-auto transition shadow-sm">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                  <span>Editar</span>
+                </button>
+              </td>
+            </tr>`;
+          }).join('');
+        }
+      }
+
+      // 5. Tabela Peças
+      const tbodyPecas = document.getElementById('table-pecas-body');
+      if (tbodyPecas) {
+        if (state.pecas.length === 0) {
+          tbodyPecas.innerHTML = `
+            <tr>
+              <td colspan="9" class="p-8 text-center text-slate-400">
+                <p class="font-bold text-sm text-slate-600">Nenhuma peça no histórico.</p>
+              </td>
+            </tr>`;
+        } else {
+          tbodyPecas.innerHTML = state.pecas.map(p => `
+            <tr class="hover:bg-slate-50 transition">
+              <td class="p-4 font-extrabold text-rbr-blue">${p.cod}</td>
+              <td class="p-4 font-bold text-slate-900">${p.tag}</td>
+              <td class="p-4 text-slate-700 font-semibold">${p.cliente || p.obra || '---'}</td>
+              <td class="p-4"><span class="px-2 py-1 bg-slate-200 text-slate-800 rounded font-bold text-[11px]">${p.produto}</span></td>
+              <td class="p-4 font-mono text-slate-800">${fmtDim(p.secao, '', p.cod)}</td>
+              <td class="p-4 text-slate-700">${fmtDim(p.comp, 'm', p.cod)}</td>
+              <td class="p-4 text-slate-700">${fmtDim(p.vol, 'm³', p.cod)}</td>
+              <td class="p-4 font-bold text-rbr-blue">${p.peso != null ? p.peso.toLocaleString('pt-BR') + ' kg' : fmtDim(null, '', p.cod)}</td>
+              <td class="p-4 flex items-center justify-center space-x-1.5">
+                <button onclick="openEditPieceModal('${encodeURIComponent(p.cod)}')" title="Editar dados da peça / Confirmar medidas" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded font-bold transition flex items-center space-x-1 shadow-xs">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5 text-amber-700"></i>
+                  <span>Editar</span>
+                </button>
+                <button onclick="showPiecePrint('${p.cod}', '${p.tag}')" class="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded font-bold hover:bg-emerald-100 transition flex items-center space-x-1">
+                  <i data-lucide="image" class="w-3.5 h-3.5 text-emerald-600"></i>
+                  <span>Print Real</span>
+                </button>
+                <a href="${p.prancha_url || ('/pranchas/prancha_' + encodeURIComponent(p.cod) + '.pdf')}" target="_blank" class="px-2.5 py-1 bg-rbr-blue/10 text-rbr-blue border border-rbr-blue/30 rounded font-bold hover:bg-rbr-blue/20 transition flex items-center space-x-1">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                  <span>Prancha PDF</span>
+                </a>
+                <button onclick="selectAndShowLabel('${p.cod}')" class="px-2 py-1 bg-rbr-orange/10 text-rbr-orangeDark border border-rbr-orange/30 rounded font-bold hover:bg-rbr-orange/20 transition">
+                  <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
+                </button>
+              </td>
+            </tr>`).join('');
+        }
+      }
+
+      // 6. Relatórios & Produção PCP
+      const totalSummary = document.getElementById('relatorio-total-summary');
+      if (totalSummary) totalSummary.innerText = `${state.pecas.length} peças cadastradas`;
+
+      const containerCards = document.getElementById('cards-fases-producao');
+      if (containerCards) {
+        containerCards.innerHTML = FASES_NOMES.map((fname, idx) => {
+          const f = idx + 1;
+          const countInFase = state.pecas.filter(p => (p.fase_atual ?? 1) === f).length;
+          const pctFase = totalP > 0 ? Math.round((countInFase / totalP) * 100) : 0;
+          const cls = FASES_CORES[f] || 'bg-slate-50 text-slate-800 border-slate-200';
+          return `
+            <div class="p-3 rounded-xl border ${cls} flex flex-col justify-between space-y-1.5 shadow-sm">
+              <div class="font-extrabold text-[10px] leading-tight">${fname}</div>
+              <div class="flex items-baseline justify-between">
+                <span class="text-xl font-black">${countInFase}</span>
+                <span class="text-[9px] font-bold opacity-80">${pctFase}%</span>
+              </div>
+              <div class="w-full bg-black/10 rounded-full h-1 overflow-hidden">
+                <div class="bg-current h-1 rounded-full" style="width: ${pctFase}%"></div>
+              </div>
+            </div>`;
+        }).join('');
+      }
+
+      const tbodyRelatorio = document.getElementById('table-relatorio-body');
+      if (tbodyRelatorio) {
+        if (state.pecas.length === 0) {
+          tbodyRelatorio.innerHTML = `
+            <tr>
+              <td colspan="10" class="p-8 text-center text-slate-400">
+                <p class="font-bold text-sm text-slate-600">Nenhum lançamento no histórico.</p>
+              </td>
+            </tr>`;
+        } else {
+          tbodyRelatorio.innerHTML = state.pecas.map(p => {
+            const faseNum = p.fase_atual ?? 1;
+            const faseNome = faseNomeDisplay(faseNum);
+            const faseCls = FASES_CORES[faseNum] || 'bg-slate-100 text-slate-800';
+
+            return `
+              <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                <td class="p-3 font-extrabold text-rbr-blue">${p.cod}</td>
+                <td class="p-3 font-bold text-slate-900">${p.tag}</td>
+                <td class="p-3 text-slate-700">${p.cliente || p.obra || '---'}</td>
+                <td class="p-3"><span class="px-2 py-0.5 bg-slate-200 text-slate-800 rounded font-bold text-[10px]">${p.produto}</span></td>
+                <td class="p-3 font-mono text-slate-800">${fmtDim(p.secao)}</td>
+                <td class="p-3 text-slate-700">${fmtDim(p.comp, 'm')}</td>
+                <td class="p-3 text-slate-700">${fmtDim(p.vol, 'm³')}</td>
+                <td class="p-3 font-bold text-slate-900">${p.peso != null ? p.peso.toLocaleString('pt-BR') + ' kg' : fmtDim(null)}</td>
+                <td class="p-3">
+                  <span class="px-2.5 py-1 text-[11px] font-bold rounded-lg border ${faseCls} inline-block">
+                    📍 ${faseNome}
+                  </span>
+                </td>
+                <td class="p-3 text-center">
+                  <div class="flex items-center justify-center space-x-1.5">
+                    <button onclick="biparPCP('${p.cod}')" title="Avançar Fase TrueQR" class="px-2.5 py-1 bg-emerald-600 text-white text-[11px] font-bold rounded-lg hover:bg-emerald-700 transition flex items-center space-x-1 shadow-sm">
+                      <i data-lucide="fast-forward" class="w-3 h-3"></i>
+                      <span>Bipar</span>
+                    </button>
+                    <button onclick="showPiecePrint('${p.cod}', '${p.tag}')" title="Ver Print Real" class="px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold rounded-lg hover:bg-emerald-100 transition">
+                      <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button onclick="selectAndShowLabel('${p.cod}')" title="Ver Etiqueta TrueQR" class="px-2 py-1 bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold rounded-lg hover:bg-slate-200 transition">
+                      <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>`;
+          }).join('');
+        }
+      }
+
+      if (state.selectedPiece) {
+        refreshTrueQRPreview();
+      }
+
+      lucide.createIcons();
+    }
+
+    function selectAndShowLabel(cod) {
+      const p = state.pecas.find(item => item.cod === cod);
+      if (p) {
+        state.selectedPiece = p;
+        refreshTrueQRPreview();
+      }
+      switchTab('etiquetas');
+    }
+
+    function exportarRelatorioCSV() {
+      if (state.pecas.length === 0) {
+        alert('⚠️ Não há peças para exportar.');
+        return;
+      }
+      let csv = '\uFEFFCÓD PCP;TAG;OBRA / CLIENTE;PRODUTO;SEÇÃO;COMPRIMENTO (m);VOLUME (m³);PESO (kg);FASE ATUAL\n';
+      state.pecas.forEach(p => {
+        const fNome = faseNomeDisplay(p.fase_atual ?? 0);
+        csv += `"${p.cod || ''}";"${p.tag || ''}";"${p.cliente || p.obra || ''}";"${p.produto || ''}";"${p.secao || ''}";"${p.comp || 0}";"${p.vol || 0}";"${p.peso || 0}";"${fNome}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Relatorio_TrueQR_RBR_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>

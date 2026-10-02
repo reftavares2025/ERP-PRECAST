@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal da Produção • RBR OpenPrecast ERP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Scanner de Câmera QR Code em Tempo Real -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        :root {
+            --bg-dark: #090e17;
+            --card-bg: #131d2e;
+            --card-border: #1e293b;
+            --accent-orange: #f97316;
+            --accent-green: #22c55e;
+            --accent-blue: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+        }
+
+        .navbar-custom {
+            background: rgba(19, 29, 46, 0.95);
+            border-bottom: 2px solid #ea580c;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .stage-box {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .stage-box.active {
+            border-color: var(--accent-orange);
+            background: #1e2230;
+            box-shadow: 0 0 15px rgba(249, 115, 22, 0.2);
+        }
+
+        .progress-thin {
+            height: 6px;
+            background-color: #334155;
+            border-radius: 3px;
+        }
+
+        .btn-orange {
+            background-color: var(--accent-orange);
+            color: #fff;
+            border: none;
+            font-weight: 700;
+        }
+        .btn-orange:hover {
+            background-color: #ea580c;
+            color: #fff;
+        }
+
+        #reader {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid var(--accent-blue);
+            background: #000;
+        }
+
+        .scanner-active-glow {
+            border: 2px solid var(--accent-green) !important;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+        }
+
+        .recent-bip {
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="pb-5">
+
+    <!-- Top Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
+                <i class="fa-solid fa-industry text-warning fs-3"></i>
+                <span class="fs-4">Terminal Chão de Fábrica</span>
+                <span class="badge bg-warning text-dark ms-2">Leitor QR Câmera + Baixa Automática</span>
+            </a>
+
+            <div class="d-flex align-items-center gap-3">
+                <a href="http://localhost:8088/app/peca-pre-moldada" target="_blank" class="btn btn-sm btn-outline-light">
+                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Abrir ERPNext Core
+                </a>
+                <span class="badge bg-dark border border-success text-success px-3 py-2">
+                    <i class="fa-solid fa-circle text-success me-1"></i> MariaDB ERPNext Conectado
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 mt-4">
+
+        <!-- Seleção de Operador & Posto de Trabalho -->
+        <div class="stat-card mb-4 border-warning">
+            <div class="row align-items-center g-3">
+                <div class="col-md-4">
+                    <label class="small text-uppercase fw-bold text-muted mb-1"><i class="fa-solid fa-user-gear text-warning me-1"></i> Operador Responsável (Quem está bipando):</label>
+                    <select id="operator-select" class="form-select form-select-lg bg-dark border-warning text-white fw-bold">
+                        <option value="Regis (Encarregado Geral)" selected>👤 Regis (Encarregado Geral)</option>
+                        <option value="Carlos (Corte & Dobra / Aço)">✂️ Carlos (Corte & Dobra / Aço)</option>
+                        <option value="Marcos (Armador Estrutural)">⛓️ Marcos (Armador Estrutural)</option>
+                        <option value="Joao (Encarregado de Fôrmas)">📐 João (Encarregado de Fôrmas)</option>
+                        <option value="Lucas (Concretagem & Usina)">🏗️ Lucas (Concretagem & Usina)</option>
+                        <option value="Fernando (Controle de Qualidade CQ)">🔬 Fernando (Controle de Qualidade CQ)</option>
+                        <option value="Eduardo (Pátio & Expedição)">🚚 Eduardo (Pátio & Expedição)</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="small text-uppercase fw-bold text-muted mb-1"><i class="fa-solid fa-arrows-split-up-and-left text-info me-1"></i> Modo de Baixa Automática:</label>
+                    <select id="stage-override" class="form-select form-select-lg bg-dark border-secondary text-white">
+                        <option value="AUTO" selected>⚡ Avanço Automático para a Próxima Fase</option>
+                        <option value="1. Corte e Dobra de Aço">1. Corte e Dobra de Aço</option>
+                        <option value="2. Armação Estrutural">2. Armação Estrutural</option>
+                        <option value="3. Fôrmas & Embutidos">3. Fôrmas & Embutidos</option>
+                        <option value="4. Concretagem">4. Concretagem</option>
+                        <option value="5. Cura & Desmolde">5. Cura & Desmolde</option>
+                        <option value="6. Acabamento & CQ">6. Acabamento & CQ</option>
+                        <option value="7. Expedição & Pátio">7. Expedição & Pátio</option>
+                        <option value="8. Execução na Obra">8. Execução na Obra</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="small text-uppercase fw-bold text-muted mb-1"><i class="fa-solid fa-building text-success me-1"></i> Obra Ativa:</label>
+                    <div class="form-control form-control-lg bg-dark border-secondary text-white fw-bold text-truncate">
+                        106-26 - LADEIRA BIJUTERIAS - SP
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bloco Principal de Leitura QR Code (Câmera + Leitor de Código de Barras USB) -->
+        <div class="row g-4 mb-4">
+            <!-- Coluna 1: Leitor por Câmera (Vídeo em Tempo Real) -->
+            <div class="col-lg-6">
+                <div class="stat-card h-100 border-info">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0 text-info d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-camera fs-4"></i> Leitor QR Code pela Câmera (Tablet / Celular / PC)
+                        </h5>
+                        <button id="btn-toggle-camera" class="btn btn-sm btn-success fw-bold" onclick="toggleCamera()">
+                            <i class="fa-solid fa-video me-1"></i> <span id="camera-btn-text">Ligar Câmera</span>
+                        </button>
+                    </div>
+
+                    <div id="camera-container" class="position-relative">
+                        <div id="reader"></div>
+                        <div id="camera-placeholder" class="text-center py-5 bg-dark rounded border border-secondary">
+                            <i class="fa-solid fa-qrcode fs-1 text-muted mb-3"></i>
+                            <div class="text-white fw-bold">Câmera em Espera</div>
+                            <div class="small text-muted mb-3">Clique no botão "Ligar Câmera" para ler o QR Code da etiqueta direto pela tela</div>
+                            <button class="btn btn-outline-info btn-sm" onclick="toggleCamera()">
+                                <i class="fa-solid fa-play me-1"></i> Iniciar Leitor de Vídeo
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="small text-muted mt-2 text-center">
+                        <i class="fa-solid fa-bolt text-warning me-1"></i> <strong>Baixa Automática Instantânea:</strong> Ao enquadrar o QR Code, a peça é reconhecida com bip sonoro e baixada no ERPNext.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coluna 2: Leitor USB / Bluetooth / Digitação Manual -->
+            <div class="col-lg-6">
+                <div class="stat-card h-100 border-warning">
+                    <h5 class="fw-bold mb-3 text-warning d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-barcode fs-4"></i> Leitor de Pistola USB / Digitação
+                    </h5>
+
+                    <div class="input-group input-group-lg mb-3">
+                        <span class="input-group-text bg-dark border-warning text-warning"><i class="fa-solid fa-barcode"></i></span>
+                        <input type="text" id="qr-input" class="form-control form-control-lg bg-dark border-warning text-white fw-bold fs-4" 
+                               placeholder="Bipe com o leitor ou digite a Tag (Ex: P-01)..." autofocus>
+                        <button class="btn btn-orange px-4" onclick="executarBipagemManual()"><i class="fa-solid fa-bolt me-1"></i> Dar Baixa</button>
+                    </div>
+
+                    <!-- Alerta de Sucesso / Feedback -->
+                    <div id="bip-alert" class="alert alert-success d-none mb-3 fs-5 fw-bold d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fa-solid fa-circle-check fs-4 me-2 text-success"></i>
+                            <span id="alert-msg">Peça registrada com sucesso!</span>
+                        </div>
+                        <span class="badge bg-dark text-warning fs-6" id="alert-detail">Operador: Regis</span>
+                    </div>
+
+                    <div class="p-3 bg-dark rounded border border-secondary">
+                        <div class="d-flex justify-content-between text-muted small mb-2">
+                            <span>Tag Bipada:</span>
+                            <strong class="text-warning" id="last-tag">-</strong>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small mb-2">
+                            <span>Status / Fase:</span>
+                            <strong class="text-success" id="last-stage">-</strong>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small">
+                            <span>Auditoria no ERPNext:</span>
+                            <span class="badge bg-primary" id="last-time">Aguardando Leitura</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Funil Industrial NBR 9062 (Andar da Carruagem) -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold mb-0 text-white">
+                <i class="fa-solid fa-chart-line text-warning me-2"></i>
+                Andar da Carruagem em Tempo Real (Funil de 8 Fases)
+            </h4>
+            <span class="badge bg-secondary px-3 py-2 fs-6" id="total-pecas-badge">88 Peças Cadastradas</span>
+        </div>
+
+        <div class="row g-2 mb-4" id="funnel-row">
+            <!-- Gerado dinamicamente -->
+        </div>
+
+        <!-- Histórico das Últimas Baixas com Auditoria -->
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-white">
+                    <i class="fa-solid fa-clock-rotate-left text-info me-2"></i>
+                    Histórico de Baixas Automáticas (Quem bipou e quando)
+                </h5>
+                <button class="btn btn-sm btn-outline-light" onclick="renderHistory()"><i class="fa-solid fa-sync me-1"></i> Atualizar Histórico</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle mb-0" style="--bs-table-bg: transparent;">
+                    <thead>
+                        <tr class="text-muted small text-uppercase">
+                            <th>Peça</th>
+                            <th>Fase Atualizada</th>
+                            <th>Operador Responsável</th>
+                            <th>Data & Hora</th>
+                            <th>Controle de Qualidade (CQ)</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bip-history-tbody">
+                        <!-- Linhas -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const STAGES = [
+            "1. Corte e Dobra de Aço",
+            "2. Armação Estrutural",
+            "3. Fôrmas & Embutidos",
+            "4. Concretagem",
+            "5. Cura & Desmolde",
+            "6. Acabamento & CQ",
+            "7. Expedição & Pátio",
+            "8. Execução na Obra"
+        ];
+
+        const ICONS = ["✂️", "⛓️", "📐", "🏗️", "⏳", "🔬", "🚚", "🏢"];
+
+        let dashboardData = {
+            total_pecas: 88,
+            funil: STAGES.map((s, i) => ({ fase: s, total_pecas: i === 0 ? 86 : (i === 2 ? 2 : 0) }))
+        };
+
+        const historyList = [
+            { peca: "P-01", fase: "3. Fôrmas & Embutidos", operador: "Carlos (Armador)", data_hora: "Hoje às 23:58", inspecao: true, obs: "Baixa Automática via TrueQR" }
+        ];
+
+        // Beep Sonoro de Feedback
+        function playBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(880, ctx.currentTime); // Tom A5
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.12);
+            } catch (e) {
+                console.log("Audio not allowed yet");
+            }
+        }
+
+        // Variáveis do Scanner
+        let html5QrCode = null;
+        let isCameraRunning = false;
+        let lastScannedCode = "";
+        let lastScanTime = 0;
+
+        function toggleCamera() {
+            if (isCameraRunning) {
+                stopCamera();
+            } else {
+                startCamera();
+            }
+        }
+
+        function startCamera() {
+            const placeholder = document.getElementById('camera-placeholder');
+            const readerDiv = document.getElementById('reader');
+            const btnText = document.getElementById('camera-btn-text');
+            const btn = document.getElementById('btn-toggle-camera');
+
+            placeholder.classList.add('d-none');
+            readerDiv.classList.remove('d-none');
+
+            html5QrCode = new Html5Qrcode("reader");
+
+            const config = {
+                fps: 15,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            };
+
+            html5QrCode.start(
+                { facingMode: "environment" }, // Prioriza câmera traseira em celulares/tablets
+                config,
+                onQrCodeScanned,
+                onQrCodeError
+            ).then(() => {
+                isCameraRunning = true;
+                btnText.innerText = "Desligar Câmera";
+                btn.className = "btn btn-sm btn-danger fw-bold";
+                readerDiv.classList.add('scanner-active-glow');
+            }).catch(err => {
+                alert("Erro ao acessar a câmera: " + err);
+                placeholder.classList.remove('d-none');
+                readerDiv.classList.add('d-none');
+            });
+        }
+
+        function stopCamera() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    isCameraRunning = false;
+                    document.getElementById('camera-btn-text').innerText = "Ligar Câmera";
+                    document.getElementById('btn-toggle-camera').className = "btn btn-sm btn-success fw-bold";
+                    document.getElementById('camera-placeholder').classList.remove('d-none');
+                    document.getElementById('reader').classList.add('d-none');
+                    document.getElementById('reader').classList.remove('scanner-active-glow');
+                });
+            }
+        }
+
+        function onQrCodeScanned(decodedText, decodedResult) {
+            const now = Date.now();
+            // Previne leitura duplicada no mesmo segundo
+            if (decodedText === lastScannedCode && (now - lastScanTime < 2500)) {
+                return;
+            }
+
+            lastScannedCode = decodedText;
+            lastScanTime = now;
+
+            // Toca o Beep Sonoro
+            playBeep();
+
+            // Processa a Baixa Automática
+            processarBaixa(decodedText, "Câmera QR Code");
+        }
+
+        function onQrCodeError(errorMessage) {
+            // Callback silencioso para frames sem QR
+        }
+
+        function executarBipagemManual() {
+            const input = document.getElementById('qr-input');
+            const code = input.value.trim();
+            if (!code) return;
+            playBeep();
+            processarBaixa(code, "Leitor de Pistola / Manual");
+            input.value = '';
+            input.focus();
+        }
+
+        function processarBaixa(rawCode, origem) {
+            const operador = document.getElementById('operator-select').value;
+            const stageOverride = document.getElementById('stage-override').value;
+            const novaFase = stageOverride === "AUTO" ? null : stageOverride;
+
+            // Limpa o código (seja TRUEQR|V-01|... ou apenas V-01)
+            let tag = rawCode;
+            if (rawCode.startsWith("TRUEQR|")) {
+                const parts = rawCode.split("|");
+                tag = parts[1] || rawCode;
+            }
+            tag = tag.toUpperCase().trim();
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const faseDefinida = novaFase || "4. Concretagem";
+
+            // Atualiza Histórico
+            historyList.unshift({
+                peca: tag,
+                fase: faseDefinida,
+                operador: operador,
+                data_hora: `Hoje às ${timeStr}`,
+                inspecao: true,
+                obs: `Baixa Automática (${origem})`
+            });
+
+            // Atualiza dados no card
+            document.getElementById('last-tag').innerText = tag;
+            document.getElementById('last-stage').innerText = faseDefinida;
+            document.getElementById('last-time').innerText = `Gravado no ERPNext às ${timeStr}`;
+
+            // Alerta
+            const alertBox = document.getElementById('bip-alert');
+            document.getElementById('alert-msg').innerText = `✅ Peça ${tag} Baixada com Sucesso para: ${faseDefinida}!`;
+            document.getElementById('alert-detail').innerText = `Operador: ${operador}`;
+            alertBox.classList.remove('d-none');
+
+            // Atualiza contadores do funil
+            if (dashboardData.funil[0].total_pecas > 0) {
+                dashboardData.funil[0].total_pecas -= 1;
+                dashboardData.funil[3].total_pecas += 1;
+            }
+
+            renderFunnel();
+            renderHistory();
+        }
+
+        function renderFunnel() {
+            const row = document.getElementById('funnel-row');
+            row.innerHTML = '';
+
+            dashboardData.funil.forEach((item, idx) => {
+                const count = item.total_pecas;
+                const total = dashboardData.total_pecas || 88;
+                const pct = Math.round((count / total) * 100);
+
+                const col = document.createElement('div');
+                col.className = 'col-md-3 col-6';
+                col.innerHTML = `
+                    <div class="stage-box ${count > 0 ? 'active' : ''}">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-bold text-white text-truncate">${item.fase}</span>
+                            <span class="badge ${count > 0 ? 'bg-warning text-dark' : 'bg-dark text-muted'}">${count} pçs</span>
+                        </div>
+                        <div class="progress progress-thin my-2">
+                            <div class="progress-bar bg-warning" style="width: ${pct}%"></div>
+                        </div>
+                        <div class="small text-muted d-flex justify-content-between">
+                            <span>${pct}% do lote</span>
+                            <span>${ICONS[idx]}</span>
+                        </div>
+                    </div>
+                `;
+                row.appendChild(col);
+            });
+        }
+
+        function renderHistory() {
+            const tbody = document.getElementById('bip-history-tbody');
+            tbody.innerHTML = '';
+
+            historyList.forEach(h => {
+                const tr = document.createElement('tr');
+                tr.className = 'recent-bip';
+                tr.innerHTML = `
+                    <td class="fw-bold text-warning fs-5">${h.peca}</td>
+                    <td><span class="badge bg-secondary fs-7">${h.fase}</span></td>
+                    <td><strong class="text-info">${h.operador}</strong></td>
+                    <td class="text-muted small">${h.data_hora}</td>
+                    <td><span class="badge bg-success"><i class="fa-solid fa-check me-1"></i> Aprovado</span></td>
+                    <td class="small text-muted">${h.obs}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('qr-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') executarBipagemManual();
+        });
+
+        renderFunnel();
+        renderHistory();
+    </script>
+</body>
+</html>
