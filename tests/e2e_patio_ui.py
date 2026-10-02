@@ -1,5 +1,5 @@
 """Tela do planejador de pátio: mapa de ocupação, ciclo da forma, sugestão e aplicação da programação."""
-import json, os, sys
+import json, os, re, sys
 from datetime import date, timedelta
 import requests
 from playwright.sync_api import sync_playwright
@@ -60,7 +60,8 @@ with sync_playwright() as pw:
     mapa = pg.inner_text("#patioMapa")
     ok("as formas aparecem no mapa", "PU-PISTA" in mapa and "PU-FORMA" in mapa)
     ok("a pista aparece ocupada pela peça programada (40% = 8 de 20 m)", "40%" in mapa and "UA" in mapa, mapa[:200].replace("\n", " "))
-    ok("o card de peças sem forma conta as 2 que faltam", "Sem forma (2)" in pg.inner_text("#patioAlertas") or "SEM FORMA (2)" in pg.inner_text("#patioAlertas").upper())
+    sem_forma = re.search(r"SEM FORMA \((\d+)\)", pg.inner_text("#patioAlertas").upper())
+    ok("o card de peças sem forma conta ao menos as 2 da obra de teste (a contagem é do sistema todo)", bool(sem_forma) and int(sem_forma.group(1)) >= 2, pg.inner_text("#patioAlertas")[:160])
 
     print("[Ciclo da forma]")
     pg.locator("#patioMapa tr", has_text="PU-FORMA").locator("input").fill("3"); pg.locator("#patioMapa tr", has_text="PU-FORMA").locator("input").press("Tab"); pg.wait_for_timeout(1200)

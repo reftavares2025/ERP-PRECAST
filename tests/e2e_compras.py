@@ -129,8 +129,8 @@ print("[Contas a pagar]")
 tit = [t for t in api("listar_titulos_pagar", status="Aberto")["titulos"] if t["fornecedor"].startswith("Forn Teste")]
 ok("três títulos abertos (600, 800 e 100 kg)", len(tit) == 3 and sorted(t["valor"] for t in tit) == [650.0, 3900.0, 5200.0], str([t["valor"] for t in tit]))
 ok("o título vencido há 2 dias aparece como vencido", any(t["vencido"] and t["valor"] == 5200.0 for t in tit))
-ok("paga um título", api("pagar_titulo", titulo=tit[0]["name"]).get("success"))
-ok("não paga duas vezes", not api("pagar_titulo", titulo=tit[0]["name"]).get("success"))
+ok("paga um título (o que vence por último, para o vencido continuar em atraso)", api("pagar_titulo", titulo=tit[-1]["name"]).get("success"))
+ok("não paga duas vezes", not api("pagar_titulo", titulo=tit[-1]["name"]).get("success"))
 
 print("[Necessidade de materiais]")
 api("program_piece", codigo_peca=pc["CA"], forma_pista=FORMA, data_programada=str(hoje + timedelta(days=20)))

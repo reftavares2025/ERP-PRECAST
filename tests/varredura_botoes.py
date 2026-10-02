@@ -15,7 +15,7 @@ U = "http://localhost:8088"
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 ABAS = [("tab-projeto", "Projeto"), ("tab-fabricacao", "Fabricação"), ("tab-logistica", "Logística"), ("tab-montagem", "Montagem"),
-        ("tab-qualidade", "Qualidade"), ("tab-cotacoes", "Cotações"), ("tab-comercial", "Comercial"), ("tab-financeiro", "Financeiro"),
+        ("tab-qualidade", "Qualidade"), ("tab-seguranca", "Segurança"), ("tab-relatorios", "Relatórios"), ("tab-suprimentos", "Suprimentos"), ("tab-cotacoes", "Cotações"), ("tab-comercial", "Comercial"), ("tab-financeiro", "Financeiro"),
         ("tab-equipe", "Equipe"), ("tab-geral", "Geral")]
 
 LISTAR = """() => {

@@ -278,7 +278,8 @@ def exportar_titular(usuario):
 def excluir_titular(usuario):
     """Apaga a identificação do rosto e retira o consentimento. As etapas de produção ficam, sem o nome da pessoa."""
     rosto = frappe.db.get_value("Rosto Operador", {"usuario": usuario}, "name")
-    if not rosto and not frappe.db.exists("Consentimento Dados", {"titular": usuario}):
+    com_consentimento = frappe.db.exists("Consentimento Dados", {"titular": usuario, "revogado_em": ["is", "not set"]})
+    if not rosto and not com_consentimento and not frappe.db.exists("Fase Historico", {"usuario": usuario}):
         return _erro("Não há dados deste titular.")
     if rosto:
         frappe.delete_doc("Rosto Operador", rosto, ignore_permissions=True, force=True)

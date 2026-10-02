@@ -1140,6 +1140,32 @@ def lgpd_excluir_titular(usuario):
     return excluir_titular(usuario)
 
 
+# ---- Relatório de peças (precast_relatorios.py)
+
+_PAPEIS_RELATORIO = ("Direção", "Produção", "Qualidade", "Logística", "Comercial", "Financeiro")
+
+
+@endpoint()
+def relatorio_clientes():
+    _exigir_papel(*_PAPEIS_RELATORIO)
+    from frappe.precast_relatorios import clientes
+    return {"success": True, "clientes": clientes()}
+
+
+@endpoint()
+def relatorio_lista_pecas(cliente=None, obra=None):
+    _exigir_papel(*_PAPEIS_RELATORIO)
+    from frappe.precast_relatorios import pecas_da_selecao
+    return {"success": True, "pecas": pecas_da_selecao(cliente, obra)}
+
+
+@endpoint()
+def relatorio_pecas(codigos, secoes=None):
+    _exigir_papel(*_PAPEIS_RELATORIO)
+    from frappe.precast_relatorios import relatorio
+    return relatorio(codigos, secoes)
+
+
 @endpoint()
 def get_transportadoras():
     return {"success": True, "transportadoras": frappe.get_all('Transportadora',
@@ -2983,7 +3009,7 @@ def update_web_page_content():
     doc.save(ignore_permissions=True)
     frappe.db.commit()
     frappe.clear_cache()
-    return {"success": True, "message": "Web Page updated successfully"}
+    return {"success": True, "message": "Página atualizada com sucesso"}
 
 @endpoint(allow_guest=True)
 def precast_bipar_manifest():
@@ -3030,7 +3056,7 @@ def update_bipar_page_content():
     doc.save(ignore_permissions=True)
     frappe.db.commit()
     frappe.clear_cache()
-    return {"success": True, "message": "Bipar page updated successfully"}
+    return {"success": True, "message": "Página do coletor atualizada com sucesso"}
 
 
 # ============================================================

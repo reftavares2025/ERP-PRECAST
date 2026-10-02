@@ -75,7 +75,7 @@ with sync_playwright() as pw:
     ok("aba Cliente e aba Qualidade são telas diferentes", titulo_cliente != pg.inner_text("#screenTitle"), f"{titulo_cliente!r} x {pg.inner_text('#screenTitle')!r}")
     pg.evaluate("switchModule('cliente')"); pg.wait_for_selector("[data-portal-secao]", timeout=15000)
     pg.select_option("#clienteObra", OBRA); pg.wait_for_timeout(2500)
-    ok("seções aparecem como caixas de seleção", pg.locator("[data-portal-secao]").count() == 10)
+    ok("seções aparecem como caixas de seleção", pg.locator("[data-portal-secao]").count() == 11)
     frame = pg.frame_locator("#clientePreview")
     frame.locator("h2:text-is('Peças')").wait_for(timeout=20000)
     ok("prévia mostra a lista de peças enquanto ligada", frame.locator("h2:text-is('Peças')").count() >= 1)

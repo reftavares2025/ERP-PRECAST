@@ -136,6 +136,7 @@
     .nav-tab.tab-cotacoes.active::after { background: var(--c-cotacoes); }
     .nav-tab.tab-suprimentos.active::after { background: #14b8a6; }
     .nav-tab.tab-seguranca.active::after { background: #f97316; }
+    .nav-tab.tab-relatorios.active::after { background: #a78bfa; }
     .nav-tab.tab-rh.active::after { background: #db2777; }
     .nav-tab.tab-fiscal.active::after { background: #f59e0b; }
     .fiscal-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:10px; }
@@ -889,6 +890,7 @@
       <div class="nav-tab tab-cliente" onclick="switchModule('cliente')">Cliente</div>
       <div class="nav-tab tab-qualidade" onclick="switchModule('qualidade')">Qualidade</div>
       <div class="nav-tab tab-seguranca" onclick="switchModule('seguranca')">Segurança</div>
+      <div class="nav-tab tab-relatorios" onclick="switchModule('relatorios')">📄 Relatórios</div>
       <div class="nav-tab tab-qrcode" onclick="switchModule('qrcode')">📱 Lançamentos QR Code</div>
       <div class="nav-tab tab-cotacoes" onclick="switchModule('cotacoes')">Cotações</div>
 
@@ -1594,6 +1596,52 @@
             </div>
             <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981; margin-top:8px;" onclick="mtRegistrar()">+ Registrar manutenção</button>
             <div id="mtHistorico" style="margin-top:10px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- VIEW: RELATÓRIOS                           -->
+      <!-- ========================================== -->
+      <div id="viewRelatorios" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+        <div class="filter-panel" style="border-top: 2px solid #a78bfa; flex-wrap:wrap;">
+          <div class="filter-group"><span class="filter-label">Cliente</span><select class="filter-select" id="relCliente" onchange="relTrocouCliente()" style="min-width:220px;"></select></div>
+          <div class="filter-group"><span class="filter-label">Obra</span><select class="filter-select" id="relObra" onchange="relCarregarPecas()" style="min-width:200px;"></select></div>
+          <div class="filter-group"><span class="filter-label">Filtrar a lista</span><input class="filter-input" id="relFiltro" placeholder="Digite parte do nome da peça" oninput="relFiltrar()" style="width:210px;"></div>
+        </div>
+        <div style="padding:16px; display:grid; gap:14px;">
+          <div class="rastro-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+              <div class="rastro-titulo" style="margin:0;">Peças do cliente <span id="relContagem" style="color:#94a3b8; font-weight:400;"></span></div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="filter-badge-btn" onclick="relMarcar(true)">☑ Selecionar todas</button>
+                <button class="filter-badge-btn" onclick="relMarcar(false)">☐ Limpar seleção</button>
+              </div>
+            </div>
+            <div class="table-container" style="height:auto; max-height:360px;">
+              <table class="rg-tabela"><thead><tr><th style="width:34px;"></th><th>Peça</th><th>Obra</th><th>Produto</th><th>Seção</th><th>Comprimento</th><th>Peso</th><th>Situação</th></tr></thead><tbody id="relPecas"></tbody></table>
+            </div>
+          </div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">O que entra no relatório</div>
+            <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:#cbd5e1;">
+              <label><input type="checkbox" class="relSecao" value="dados" checked> Dados técnicos (seção, comprimento, volume, peso, aço)</label>
+              <label><input type="checkbox" class="relSecao" value="producao" checked> Produção (fases, quem fez e quando)</label>
+              <label><input type="checkbox" class="relSecao" value="rastreabilidade"> Rastreabilidade (concreto, resistência, certificados do aço)</label>
+              <label><input type="checkbox" class="relSecao" value="qualidade"> Qualidade (inspeções e não conformidades)</label>
+              <label><input type="checkbox" class="relSecao" value="ferros"> Lista de ferros</label>
+              <label><input type="checkbox" class="relSecao" value="entrega" checked> Entrega (romaneio e recebimento)</label>
+            </div>
+            <div style="display:flex; gap:18px; margin-top:10px; font-size:13px; color:#cbd5e1;">
+              <label><input type="radio" name="relFormato" value="tabela" checked> Tabela resumida (uma linha por peça)</label>
+              <label><input type="radio" name="relFormato" value="ficha"> Ficha completa de cada peça</label>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center;">
+              <button class="filter-badge-btn" style="background:#7c3aed; border-color:#8b5cf6;" onclick="relGerar('ver')">👁️ Ver o relatório</button>
+              <button class="filter-badge-btn" style="background:#2563EB; border-color:#3B82F6;" onclick="relGerar('imprimir')">🖨️ Imprimir</button>
+              <button class="filter-badge-btn" onclick="relGerar('csv')">⬇️ Baixar planilha (CSV)</button>
+              <span id="relMsg" style="font-size:12px;"></span>
+            </div>
           </div>
         </div>
       </div>
@@ -2323,6 +2371,20 @@
     </div>
   </div>
 
+  <!-- MODAL: RELATÓRIO -->
+  <div class="modal-backdrop" id="modalRelatorio">
+    <div class="modal-card" style="max-width:1000px; width:96%; max-height:92vh; overflow:auto;">
+      <div class="modal-header">
+        <span class="modal-title">Relatório de peças</span>
+        <div style="display:flex; gap:8px;">
+          <button class="filter-badge-btn" onclick="relImprimirAtual()">🖨️ Imprimir</button>
+          <button class="filter-badge-btn" style="background:#475569; border-color:#475569;" onclick="document.getElementById('modalRelatorio').classList.remove('active')">Fechar</button>
+        </div>
+      </div>
+      <div id="relCorpo" style="font-size:13px; color:#cbd5e1;"></div>
+    </div>
+  </div>
+
   <!-- MODAL: RG DA PEÇA -->
   <div class="modal-backdrop" id="modalRgPeca">
     <div class="modal-card" style="max-width:860px; width:96%; max-height:92vh; overflow:auto;">
@@ -2698,6 +2760,12 @@
         subs.forEach(t => t.classList.remove('active'));
         subs[1].classList.add('active');
         switchSubScreen('montagem');
+      } else if (mod === 'relatorios') {
+        hideAllViews();
+        document.getElementById('viewRelatorios').classList.remove('hidden');
+        document.getElementById('subbar').classList.add('hidden');
+        document.getElementById('screenTitle').innerText = 'Relatórios — escolha o cliente e as peças';
+        carregarRelatorios();
       } else if (mod === 'seguranca') {
         hideAllViews();
         document.getElementById('viewSeguranca').classList.remove('hidden');
@@ -3533,6 +3601,7 @@
       document.getElementById('viewSuprimentos').classList.add('hidden');
       document.getElementById('viewSeguranca').classList.add('hidden');
       document.getElementById('viewManutencao').classList.add('hidden');
+      document.getElementById('viewRelatorios').classList.add('hidden');
     }
 
     function clearActiveTabs() {
@@ -6532,6 +6601,142 @@
       alert(d.success ? `Dados excluídos. ${d.etapas_anonimizadas} etapa(s) de produção ficaram sem o nome da pessoa.` : d.error);
       carregarRostos();
     }
+
+    // ---------------- Relatórios: cliente -> peças -> selecionar -> imprimir ----------------
+    let relClientes = [], relTodas = [], relUltimo = null;
+
+    function relMsg(t, c) { const el = document.getElementById('relMsg'); el.style.color = c || '#94a3b8'; el.textContent = t; }
+
+    async function carregarRelatorios() {
+      try {
+        const d = await rastroApi('relatorio_clientes');
+        relClientes = d.clientes;
+        const sel = document.getElementById('relCliente'), atual = sel.value;
+        sel.innerHTML = relClientes.map(c => `<option value="${escHtml(c.cliente)}">${escHtml(c.cliente)} (${c.pecas} peça(s))</option>`).join('') || '<option value="">Nenhum cliente cadastrado</option>';
+        if (relClientes.some(c => c.cliente === atual)) sel.value = atual;
+        relTrocouCliente();
+      } catch (e) { relMsg(e.message, '#ef4444'); }
+    }
+
+    function relTrocouCliente() {
+      const c = relClientes.find(x => x.cliente === document.getElementById('relCliente').value);
+      document.getElementById('relObra').innerHTML = '<option value="">Todas as obras do cliente</option>' + (c ? c.obras.map(o => `<option value="${escHtml(o.codigo)}">${escHtml(o.codigo)}${o.nome ? ' · ' + escHtml(o.nome) : ''} (${o.pecas})</option>`).join('') : '');
+      relCarregarPecas();
+    }
+
+    async function relCarregarPecas() {
+      const cliente = document.getElementById('relCliente').value, obra = document.getElementById('relObra').value;
+      relUltimo = null;
+      if (!cliente) { relTodas = []; relDesenhar(); return; }
+      try { relTodas = (await rastroApi('relatorio_lista_pecas', {cliente, obra: obra || null})).pecas; relDesenhar(); relMsg(''); }
+      catch (e) { relTodas = []; relDesenhar(); relMsg(e.message, '#ef4444'); }
+    }
+
+    function relMarcadas() { return [...document.querySelectorAll('#relPecas input.relCheck:checked')].map(i => i.value); }
+    function relAtualizarContagem() {
+      const visiveis = document.querySelectorAll('#relPecas tr:not([hidden])').length;
+      document.getElementById('relContagem').textContent = `· ${relMarcadas().length} marcada(s) de ${relTodas.length}${visiveis !== relTodas.length ? ` (${visiveis} na lista filtrada)` : ''}`;
+    }
+
+    function relDesenhar() {
+      document.getElementById('relPecas').innerHTML = relTodas.map(p => `<tr data-busca="${escHtml((p.tag + ' ' + p.obra + ' ' + (p.produto || '')).toLowerCase())}">
+        <td><input type="checkbox" class="relCheck" value="${escHtml(p.codigo_peca)}" onchange="relAtualizarContagem()"></td><td><b>${escHtml(p.tag)}</b></td><td>${escHtml(p.obra)}</td><td>${escHtml(p.produto || '')}</td>
+        <td>${escHtml(p.secao || '')}</td><td>${p.comprimento_m ? p.comprimento_m + ' m' : ''}</td><td>${p.peso_kg ? Math.round(p.peso_kg) + ' kg' : ''}</td><td>${escHtml(p.status_producao || '')}</td></tr>`).join('')
+        || '<tr><td colspan="8" style="color:#64748b; padding:16px;">Escolha um cliente com peças.</td></tr>';
+      document.getElementById('relFiltro').value = '';
+      relAtualizarContagem();
+    }
+
+    function relFiltrar() {
+      const q = document.getElementById('relFiltro').value.trim().toLowerCase();
+      document.querySelectorAll('#relPecas tr').forEach(tr => { tr.hidden = !!q && !(tr.dataset.busca || '').includes(q); });
+      relAtualizarContagem();
+    }
+
+    function relMarcar(valor) {
+      document.querySelectorAll('#relPecas tr:not([hidden]) input.relCheck').forEach(i => { i.checked = valor; });   // só as que estão na lista filtrada
+      relAtualizarContagem();
+    }
+
+    const relFmt = v => v === null || v === undefined || v === '' ? '-' : v;
+    const relNum = (v, un) => v ? `${Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 2})}${un ? ' ' + un : ''}` : '-';
+
+    function relLinhaResumo(p, secoes) {
+      const c = [p.tag, p.obra, p.produto || '', p.fase || ''];
+      if (secoes.includes('dados')) c.push(p.dados.secao || '-', relNum(p.dados.comprimento_m, 'm'), relNum(p.dados.volume_m3, 'm³'), relNum(p.dados.peso_kg, 'kg'), relNum(p.dados.aco_kg, 'kg'));
+      if (secoes.includes('producao')) c.push(p.producao.forma_pista || '-', p.producao.data_programada || '-');
+      if (secoes.includes('rastreabilidade')) c.push(p.rastreabilidade.lote ? p.rastreabilidade.lote.codigo : '-', p.rastreabilidade.certificados.map(x => x.corrida).join(', ') || '-');
+      if (secoes.includes('qualidade')) c.push(String(p.qualidade.inspecoes.length), String(p.qualidade.nao_conformidades.filter(n => n.status !== 'Aprovada').length));
+      if (secoes.includes('entrega')) c.push(p.entrega ? `${p.entrega.romaneio} (${p.entrega.status})` : '-');
+      return c;
+    }
+
+    function relCabecalhoResumo(secoes) {
+      const c = ['Peça', 'Obra', 'Produto', 'Situação'];
+      if (secoes.includes('dados')) c.push('Seção', 'Comprimento', 'Volume', 'Peso', 'Aço');
+      if (secoes.includes('producao')) c.push('Forma / pista', 'Programada');
+      if (secoes.includes('rastreabilidade')) c.push('Lote', 'Corridas do aço');
+      if (secoes.includes('qualidade')) c.push('Inspeções', 'NC abertas');
+      if (secoes.includes('entrega')) c.push('Romaneio');
+      return c;
+    }
+
+    function relTabela(cols, linhas) {
+      return linhas.length ? `<table class="rg-tabela"><thead><tr>${cols.map(c => `<th>${escHtml(c)}</th>`).join('')}</tr></thead><tbody>${linhas.map(l => `<tr>${l.map(c => `<td>${escHtml(relFmt(c))}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '<div style="color:#64748b; font-size:12px;">Nada registrado.</div>';
+    }
+
+    function relFicha(p, secoes) {
+      const partes = [`<div class="rel-ficha"><h3 style="margin:0 0 4px; font-size:15px;">${escHtml(p.tag)} <span style="font-weight:400; color:#94a3b8;">· ${escHtml(p.obra)} · ${escHtml(p.produto || '')} · ${escHtml(p.fase || '')}</span></h3>`];
+      if (secoes.includes('dados')) { const d = p.dados; partes.push(`<div class="rg-bloco-titulo">Dados técnicos</div>` + relTabela(['Seção', 'Comprimento', 'Volume', 'Peso', 'Aço', 'fck', 'Folha'], [[d.secao ? d.secao + ' cm' : '', relNum(d.comprimento_m, 'm'), relNum(d.volume_m3, 'm³'), relNum(d.peso_kg, 'kg'), relNum(d.aco_kg, 'kg'), d.fck, d.folha]])); }
+      if (secoes.includes('producao')) partes.push(`<div class="rg-bloco-titulo">Produção</div>` + (p.producao.aviso_engenharia ? `<div style="color:#fbbf24; font-size:12px; margin-bottom:4px;">Aviso da engenharia: ${escHtml(p.producao.aviso_engenharia)}</div>` : '') + relTabela(['Etapa', 'Data e hora', 'Quem', 'Forma / pista'], p.producao.historico.map(h => [h.fase, h.data_hora, h.quem, h.forma_pista])));
+      if (secoes.includes('rastreabilidade')) { const r = p.rastreabilidade; partes.push(`<div class="rg-bloco-titulo">Rastreabilidade</div>` + (r.lote ? relTabela(['Lote', 'Concretagem', 'Usina', 'fck especificado', 'Rupturas'], [[r.lote.codigo, r.lote.data_concretagem, r.lote.usina, r.lote.fck_especificado + ' MPa', r.lote.corpos_de_prova.map(c => `${c.idade_dias}d: ${c.fck_obtido} MPa (${c.resultado})`).join(' · ')]]) : '<div style="color:#64748b; font-size:12px;">Sem lote de concreto ligado.</div>') + relTabela(['Corrida', 'Bitola', 'Fabricante', 'Categoria'], r.certificados.map(c => [c.corrida, c.bitola_mm + ' mm', c.fabricante, c.norma]))); }
+      if (secoes.includes('qualidade')) partes.push(`<div class="rg-bloco-titulo">Qualidade</div>` + relTabela(['Etapa', 'Resultado', 'Inspetor', 'Data', 'Parecer'], p.qualidade.inspecoes.map(i => [i.etapa, i.aprovado ? 'Aprovado' : 'Reprovado', i.inspetor, i.data, i.parecer])) + (p.qualidade.nao_conformidades.length ? relTabela(['Não conformidade', 'Situação', 'Aberta em'], p.qualidade.nao_conformidades.map(n => [n.descricao, n.status, n.aberta_em])) : ''));
+      if (secoes.includes('ferros')) partes.push(`<div class="rg-bloco-titulo">Lista de ferros</div>` + relTabela(['Posição', 'Ø (mm)', 'Quantidade', 'Comp. unit. (m)', 'Comp. total (m)', 'Peso (kg)'], p.ferros.map(f => [f.posicao, f.bitola_mm, f.quantidade, f.comp_unit_m, f.comp_total_m, f.peso_kg])));
+      if (secoes.includes('entrega')) partes.push(`<div class="rg-bloco-titulo">Entrega</div>` + (p.entrega ? relTabela(['Romaneio', 'Caminhão', 'Saída', 'Situação', 'Entregue em', 'Recebido por'], [[p.entrega.romaneio, p.entrega.caminhao, p.entrega.data_expedicao, p.entrega.status, p.entrega.data_entrega, p.entrega.recebedor]]) : '<div style="color:#64748b; font-size:12px;">Ainda não expedida.</div>'));
+      return partes.join('') + '</div>';
+    }
+
+    function htmlRelatorio(d, formato) {
+      const logo = document.getElementById('topbarCompanyLogo'), temLogo = logo && logo.style.display !== 'none' && logo.src;
+      const cab = `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; border-bottom:2px solid #7c3aed; padding-bottom:8px; margin-bottom:10px;">
+        <div><div style="font-size:18px; font-weight:800;">Relatório de peças</div>
+          <div style="font-size:12px; color:#94a3b8;">Cliente: <b>${escHtml(d.clientes.join(', ') || '-')}</b> · Obra(s): ${escHtml(d.obras.join(', '))}</div>
+          <div style="font-size:12px; color:#94a3b8;">${d.total} peça(s) · ${relNum(d.resumo.peso_kg, 'kg')} · ${relNum(d.resumo.volume_m3, 'm³')} · aço ${relNum(d.resumo.aco_kg, 'kg')}</div></div>
+        <div style="text-align:right; font-size:11px; color:#94a3b8;">${temLogo ? `<img src="${escHtml(logo.src)}" style="height:34px; display:block; margin-left:auto;" alt="">` : ''}${escHtml(d.empresa)}<br>Emitido em ${escHtml(d.emitido_em)}<br>por ${escHtml(d.emitido_por)}</div></div>`;
+      if (formato === 'ficha') return cab + d.pecas.map(p => relFicha(p, d.secoes)).join('');
+      return cab + relTabela(relCabecalhoResumo(d.secoes), d.pecas.map(p => relLinhaResumo(p, d.secoes)));
+    }
+
+    function relCsv(d) {
+      const cab = relCabecalhoResumo(d.secoes);
+      const linhas = [cab].concat(d.pecas.map(p => relLinhaResumo(p, d.secoes)));
+      const csv = '\ufeff' + linhas.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8'}));
+      a.download = `relatorio-${(d.clientes[0] || 'pecas').replace(/[^A-Za-z0-9]+/g, '-')}-${d.emitido_em.slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    const CSS_RELATORIO = CSS_RG + ' h3{font-size:13px} .rel-ficha{page-break-inside:avoid; margin:0 0 14px; padding-bottom:8px; border-bottom:1px solid #999} table{font-size:10px}';
+
+    async function relGerar(acao) {
+      const codigos = relMarcadas();
+      if (!codigos.length) { relMsg('Marque ao menos uma peça na lista.', '#ef4444'); return; }
+      const secoes = [...document.querySelectorAll('.relSecao:checked')].map(i => i.value);
+      if (!secoes.length) { relMsg('Marque ao menos um assunto para entrar no relatório.', '#ef4444'); return; }
+      relMsg('Reunindo os dados...');
+      try {
+        const d = await rastroApi('relatorio_pecas', {codigos, secoes});
+        const formato = document.querySelector('input[name=relFormato]:checked').value;
+        relUltimo = {d, formato}; relMsg(`${d.total} peça(s) no relatório.`, '#4ade80');
+        if (acao === 'csv') { relCsv(d); return; }
+        if (acao === 'imprimir') { imprimirHtml('Relatório de peças', htmlRelatorio(d, formato), CSS_RELATORIO); return; }
+        document.getElementById('relCorpo').innerHTML = htmlRelatorio(d, formato);
+        document.getElementById('modalRelatorio').classList.add('active');
+      } catch (e) { relMsg(e.message, '#ef4444'); }
+    }
+
+    function relImprimirAtual() { if (relUltimo) imprimirHtml('Relatório de peças', htmlRelatorio(relUltimo.d, relUltimo.formato), CSS_RELATORIO); }
   </script>
 </body>
 </html>
