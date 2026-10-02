@@ -40,6 +40,14 @@
     body > .navbar, header.navbar, nav.navbar, .web-footer, footer.web-footer, .page-header, .page-breadcrumbs { display: none !important; }
     .page_content, .page-content-wrapper, main.container, .container.my-4 { margin: 0 !important; padding: 0 !important; max-width: none !important; }
     body { margin: 0 !important; }
+  
+    .dossie-fundo { position:fixed; inset:0; background:rgba(2,6,23,.75); display:none; align-items:flex-start; justify-content:center; padding:16px; overflow:auto; z-index:50; }
+    .dossie-fundo.aberto { display:flex; }
+    .dossie { background:var(--card, #fff); color:var(--text, #0f172a); border-radius:12px; max-width:720px; width:100%; padding:18px; }
+    .dossie h3 { margin:14px 0 6px; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:var(--muted, #64748b); }
+    .dossie table { width:100%; border-collapse:collapse; font-size:13px; }
+    .dossie th, .dossie td { text-align:left; padding:5px 6px; border-bottom:1px solid rgba(100,116,139,.25); }
+    .dossie .item { display:flex; gap:8px; padding:6px 10px; border:1px solid rgba(100,116,139,.35); border-radius:8px; margin-bottom:6px; font-size:13px; }
   </style>
 </head>
 <body>
@@ -56,6 +64,34 @@
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const dataBr = d => d ? d.slice(0, 10).split('-').reverse().join('/') : '—';
   let dados = null, filtro = 'Todas';
+
+
+  const ICONE_RG = { ok: '✅', pendente: '⏳', falha: '❌' };
+  const dataHoraBr = v => v ? new Date(String(v).replace(' ', 'T')).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+  function fecharDossie() { document.getElementById('dossieFundo').classList.remove('aberto'); }
+
+  async function abrirDossie(tag) {
+    const fundo = document.getElementById('dossieFundo'), corpo = document.getElementById('dossieCorpo');
+    corpo.innerHTML = '<div class="msg">Montando o dossiê...</div>'; fundo.classList.add('aberto');
+    try {
+      const r = await fetch(`${API_BASE}/api/method/frappe.precast_api.get_rg_publico?codigo_obra=${encodeURIComponent(param('obra'))}&t=${encodeURIComponent(param('t'))}&tag=${encodeURIComponent(tag)}`);
+      const d = (await r.json()).message || {};
+      if (!d.success) { corpo.innerHTML = `<div class="msg err">${esc(d.error || 'Não foi possível abrir o dossiê.')}</div><button onclick="fecharDossie()">Fechar</button>`; return; }
+      const tab = (cols, linhas) => linhas.length ? `<table><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${linhas.map(l => `<tr>${l.map(c => `<td>${esc(c == null || c === '' ? '-' : c)}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '<div style="color:var(--muted); font-size:13px;">Nada registrado.</div>';
+      const p = d.peca;
+      corpo.innerHTML = `
+        <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;"><h2 style="margin:0;">Dossiê da peça ${esc(p.tag)}</h2><button onclick="fecharDossie()">Fechar</button></div>
+        <div style="margin:6px 0; font-weight:700; color:${d.completo ? '#16a34a' : '#b45309'};">${d.completo ? 'Documentação completa' : 'Documentação em andamento'}</div>
+        ${tab(['Produto', 'Seção', 'Comprimento', 'Peso', 'fck', 'Etapa'], [[p.produto, p.secao ? p.secao + ' cm' : '', p.comprimento_m ? p.comprimento_m + ' m' : '', p.peso_kg ? Math.round(p.peso_kg) + ' kg' : '', p.fck, p.fase]])}
+        <h3>Conferência</h3>${d.conferencias.map(c => `<div class="item"><span>${ICONE_RG[c.estado]}</span><b>${esc(c.item)}</b><span style="color:var(--muted);">${esc(c.detalhe)}</span></div>`).join('')}
+        <h3>Concreto</h3>${d.lote ? tab(['Lote', 'Concretagem', 'fck especificado', 'Situação'], [[d.lote.codigo, d.lote.data_concretagem, d.lote.fck_especificado + ' MPa', d.lote.status]]) + '<div style="height:6px"></div>' + tab(['Idade', 'Resistência', 'Resultado', 'Ruptura'], d.lote.corpos_de_prova.map(c => [c.idade_dias + ' dias', c.fck_obtido + ' MPa', c.resultado, c.data_ruptura])) : '<div style="color:var(--muted); font-size:13px;">Lote ainda não ligado à peça.</div>'}
+        <h3>Aço (certificados)</h3>${tab(['Corrida', 'Bitola', 'Categoria', 'Fabricante', 'Recebido'], d.certificados.map(c => [c.corrida, c.bitola_mm + ' mm', c.norma, c.fabricante, c.data_recebimento]))}
+        <h3>Fabricação</h3>${tab(['Etapa', 'Data e hora'], d.fases.map(f => [f.fase, dataHoraBr(f.data_hora)]))}
+        <h3>Inspeções de qualidade</h3>${tab(['Etapa', 'Resultado', 'Data e hora'], d.inspecoes.map(i => [i.etapa, i.aprovado ? 'Aprovado' : 'Reprovado', dataHoraBr(i.data_inspecao)]))}
+        <h3>Entrega</h3>${d.entrega ? tab(['Romaneio', 'Saída', 'Situação'], [[d.entrega.romaneio, d.entrega.data_expedicao, d.entrega.status]]) : '<div style="color:var(--muted); font-size:13px;">Ainda não expedida.</div>'}
+        <div style="margin-top:12px; font-size:11px; color:var(--muted);">Emitido em ${dataHoraBr(d.emitido_em)}</div>`;
+    } catch (e) { corpo.innerHTML = '<div class="msg err">Não foi possível carregar agora. Tente de novo em instantes.</div><button onclick="fecharDossie()">Fechar</button>'; }
+  }
 
   async function carregar() {
     const obra = param('obra'), token = param('t'), alvo = document.getElementById('conteudo');
@@ -110,7 +146,7 @@
         ${d.por_produto.map(p => `<tr><td>${esc(p.produto)}</td><td>${p.total}</td><td>${p.produzidas}</td><td>${p.montadas}</td></tr>`).join('')}</tbody></table></div>` : ''}
       ${bloco(d.pecas, `<div class="card"><h2>Peças</h2>
         <div class="chips">${['Todas', 'Em produção', 'Produzida', 'Expedida', 'Entregue', 'Montada'].map(f => `<span class="chip ${f === filtro ? 'on' : ''}" onclick="filtro='${f}'; desenhar();">${f}</span>`).join('')}</div>
-        <div class="pecas">${lista.map(p => `<div class="peca">${esc(p.tag)}<small class="s-${esc(p.situacao.split(' ')[0])}">${esc(p.situacao)}${p.situacao === 'Em produção' ? ' · ' + esc(p.etapa) : ''}</small></div>`).join('') || '<div class="msg">Nenhuma peça nesta situação.</div>'}</div>
+        <div class="pecas">${lista.map(p => `<div class="peca"${sec.dossie ? ` data-tag="${esc(p.tag)}" onclick="abrirDossie(this.dataset.tag)" style="cursor:pointer;" title="Abrir o dossiê da peça"` : ''}>${esc(p.tag)}<small class="s-${esc(p.situacao.split(' ')[0])}">${esc(p.situacao)}${p.situacao === 'Em produção' ? ' · ' + esc(p.etapa) : ''}</small></div>`).join('') || '<div class="msg">Nenhuma peça nesta situação.</div>'}</div>
       </div>`)}
       ${bloco(d.entregas, `<div class="card"><h2>Entregas</h2>
         ${(d.entregas || []).map(e => `<div class="entrega"><div class="ponto" style="background:${e.status === 'Entregue' ? 'var(--ent)' : 'var(--exp)'}"></div><div><b>${esc(e.status === 'Entregue' ? 'Entregue' : e.status === 'Despachado' ? 'A caminho' : 'Em preparação')}</b> · ${esc(e.codigo)} · ${e.peso_t} t<br>
@@ -130,5 +166,7 @@
   carregar();
   setInterval(carregar, 60000);
 </script>
+
+  <div class="dossie-fundo" id="dossieFundo" onclick="if (event.target === this) fecharDossie()"><div class="dossie" id="dossieCorpo"></div></div>
 </body>
 </html>

@@ -485,10 +485,11 @@ def get_pieces(obra=None, search=None, status=None):
         'prancha_url', 'print_url', 'arquivo_origem',
         'dimensoes_confirmadas', 'aviso_engenharia', 'modified',
         'forma_pista', 'data_programada', 'romaneio',
-        'peso_aco_kg', 'folha_prancha', 'fonte_leitura'
+        'peso_aco_kg', 'folha_prancha', 'fonte_leitura',
+        'lote_concreto', 'corridas_aco', 'plano_corte', 'sequencia_montagem', 'data_montagem_prevista'
     ]
     
-    pieces = frappe.get_all('Peca Pre-Moldada', filters=filters, fields=fields, order_by='modified desc', limit=500)
+    pieces = frappe.get_all('Peca Pre-Moldada', filters=filters, fields=fields, order_by='modified desc', limit=5000)
     
     if search:
         s = search.lower()
@@ -548,6 +549,10 @@ def advance_piece_phase(codigo_peca, next_fase=None, forcar=False):
     if permitidas is not None and curr_fase not in permitidas:
         return {"success": False, "error": f"Esta peça está em {SETORES_PRODUCAO[curr_fase - 1]}. O seu cadastro libera só: "
                 f"{', '.join(SETORES_PRODUCAO[f - 1] for f in sorted(permitidas))}."}
+    from frappe.precast_sst import bloqueio_por_treinamento
+    sem_treinamento = bloqueio_por_treinamento(frappe.session.user, curr_fase) if permitidas is not None else None
+    if sem_treinamento:
+        return {"success": False, "bloqueado_treinamento": True, "error": sem_treinamento}
     if next_fase:
         new_fase = int(next_fase)
     else:
@@ -895,6 +900,246 @@ def mudar_status_plano_corte(plano, status):
     return mudar_status(plano, status)
 
 
+# ---- Logística e montagem (precast_montagem.py)
+
+@endpoint()
+def definir_sequencia_montagem(obra, pecas=None):
+    _exigir_papel("Logística", "Produção", "Direção")
+    from frappe.precast_montagem import definir_sequencia
+    return definir_sequencia(obra, pecas)
+
+
+@endpoint()
+def planejar_cargas(obra, pecas=None, balanco_m=None):
+    from frappe.precast_montagem import planejar_cargas as _planejar
+    return _planejar(obra, pecas, balanco_m)
+
+
+@endpoint()
+def aplicar_plano_cargas(obra, data_expedicao, cargas):
+    _exigir_papel("Logística", "Produção", "Direção")
+    from frappe.precast_montagem import aplicar_cargas
+    return aplicar_cargas(obra, data_expedicao, cargas)
+
+
+@endpoint()
+def salvar_equipamento_icamento(nome, capacidade_max_kg, tipo=None, tabela_carga=None, fator_seguranca=None):
+    _exigir_papel("Logística", "Direção")
+    from frappe.precast_montagem import salvar_equipamento
+    return salvar_equipamento(nome, tipo, capacidade_max_kg, tabela_carga, fator_seguranca)
+
+
+@endpoint()
+def listar_equipamentos_icamento():
+    from frappe.precast_montagem import listar_equipamentos
+    return {"success": True, "equipamentos": listar_equipamentos()}
+
+
+@endpoint()
+def excluir_equipamento_icamento(nome):
+    _exigir_papel("Logística", "Direção")
+    from frappe.precast_montagem import excluir_equipamento
+    return excluir_equipamento(nome)
+
+
+@endpoint()
+def plano_icamento(obra, equipamento, raio_m):
+    from frappe.precast_montagem import plano_icamento as _plano
+    return _plano(obra, equipamento, raio_m)
+
+
+@endpoint()
+def cronograma_montagem(obra, data_inicio=None, pecas_por_dia=None, aplicar=False):
+    if data_inicio and str(aplicar).lower() in ("1", "true", "sim"):
+        _exigir_papel("Logística", "Produção", "Direção")
+    from frappe.precast_montagem import cronograma
+    return cronograma(obra, data_inicio, pecas_por_dia, aplicar)
+
+
+# ---- Suprimentos e financeiro (precast_compras.py)
+
+@endpoint()
+def config_compras(alcada_producao=None, prazo_dias=None):
+    from frappe.precast_compras import configuracao
+    if alcada_producao not in (None, "") or prazo_dias not in (None, ""):
+        _exigir_papel("Direção", "Financeiro")
+    return configuracao(alcada_producao, prazo_dias)
+
+
+@endpoint()
+def necessidade_materiais(obra=None):
+    from frappe.precast_compras import necessidade
+    return necessidade(obra)
+
+
+@endpoint()
+def solicitar_compra(item, categoria, quantidade, preco_unitario, fornecedor, obra=None, bitola_mm=None, unidade="kg", prazo_dias=None, observacoes=None):
+    _exigir_papel("Produção", "Financeiro", "Direção")
+    from frappe.precast_compras import solicitar
+    return solicitar(item, categoria, quantidade, preco_unitario, fornecedor, obra, bitola_mm, unidade, prazo_dias, observacoes)
+
+
+@endpoint()
+def aprovar_compra(pedido):
+    from frappe.precast_compras import aprovar, quem_aprova, _pedido
+    p = _pedido(pedido)
+    if p:
+        _exigir_papel(*quem_aprova(float(p.valor_total or 0)))     # a alçada: valor maior só a Direção aprova
+    return aprovar(pedido)
+
+
+@endpoint()
+def cancelar_compra(pedido):
+    _exigir_papel("Produção", "Financeiro", "Direção")
+    from frappe.precast_compras import cancelar
+    return cancelar(pedido)
+
+
+@endpoint()
+def receber_compra(pedido, corrida=None, nota_fiscal=None, vencimento=None, data_recebimento=None):
+    _exigir_papel("Produção", "Logística", "Financeiro", "Direção")
+    from frappe.precast_compras import receber
+    return receber(pedido, corrida, nota_fiscal, vencimento, data_recebimento)
+
+
+@endpoint()
+def listar_pedidos_compra(obra=None, status=None):
+    from frappe.precast_compras import listar_pedidos
+    return {"success": True, "pedidos": listar_pedidos(obra, status)}
+
+
+@endpoint()
+def listar_titulos_pagar(status=None):
+    _exigir_papel("Financeiro", "Direção")
+    from frappe.precast_compras import listar_titulos
+    return {"success": True, "titulos": listar_titulos(status)}
+
+
+@endpoint()
+def pagar_titulo(titulo, data=None):
+    _exigir_papel("Financeiro", "Direção")
+    from frappe.precast_compras import pagar
+    return pagar(titulo, data)
+
+
+@endpoint()
+def fluxo_caixa_projetado(semanas=8):
+    _exigir_papel("Financeiro", "Direção")
+    from frappe.precast_compras import fluxo_caixa
+    return fluxo_caixa(semanas)
+
+
+@endpoint()
+def orcado_realizado_obras():
+    _exigir_papel("Financeiro", "Direção", "Produção")
+    from frappe.precast_compras import orcado_realizado
+    return {"success": True, "obras": orcado_realizado()}
+
+
+@endpoint()
+def saldo_aco_corridas():
+    from frappe.precast_compras import saldo_aco
+    linhas, por_bitola = saldo_aco()
+    return {"success": True, "corridas": linhas, "por_bitola": {str(k): round(v, 1) for k, v in por_bitola.items()}}
+
+
+# ---- Segurança do trabalho, manutenção de equipamentos e LGPD (precast_sst.py)
+
+@endpoint()
+def painel_seguranca():
+    _exigir_papel("Direção", "Produção", "Qualidade", "RH")
+    from frappe.precast_sst import painel_sst
+    return painel_sst()
+
+
+@endpoint()
+def registrar_sst(tipo, pessoa, documento=None, data_emissao=None, validade=None, observacoes=None, funcao=None, obra=None, cat=False, dias_afastamento=None):
+    _exigir_papel("Direção", "Produção", "Qualidade", "RH")
+    from frappe.precast_sst import registrar_sst as _registrar
+    return _registrar(tipo, pessoa, documento, data_emissao, validade, observacoes, funcao, obra, cat, dias_afastamento)
+
+
+@endpoint()
+def listar_registros_sst(tipo=None, pessoa=None):
+    _exigir_papel("Direção", "Produção", "Qualidade", "RH")
+    from frappe.precast_sst import listar_sst
+    return {"success": True, "registros": listar_sst(tipo, pessoa)}
+
+
+@endpoint()
+def config_seguranca(exigir_treinamento=None):
+    from frappe.precast_sst import definir_exigir_treinamento, exigir_treinamento as _exigir
+    if exigir_treinamento is not None:
+        _exigir_papel("Direção")
+        definir_exigir_treinamento(str(exigir_treinamento).lower() in ("1", "true", "sim"))
+    return {"success": True, "exigir_treinamento": _exigir()}
+
+
+@endpoint()
+def salvar_ativo_operacional(nome, tipo, unidade_medida="Horas", leitura_atual=0, intervalo_manutencao=None, vencimento_documento=None, identificacao=None):
+    _exigir_papel("Logística", "Produção", "Direção")
+    from frappe.precast_sst import salvar_ativo
+    return salvar_ativo(nome, tipo, unidade_medida, leitura_atual, intervalo_manutencao, vencimento_documento, identificacao)
+
+
+@endpoint()
+def listar_ativos_operacionais():
+    from frappe.precast_sst import listar_ativos
+    return {"success": True, "ativos": listar_ativos()}
+
+
+@endpoint()
+def registrar_manutencao_ativo(ativo, tipo, descricao=None, custo=None, leitura=None, data=None):
+    _exigir_papel("Logística", "Produção", "Direção")
+    from frappe.precast_sst import registrar_manutencao
+    return registrar_manutencao(ativo, tipo, descricao, custo, leitura, data)
+
+
+@endpoint()
+def atualizar_leitura_ativo(ativo, leitura):
+    _exigir_papel("Logística", "Produção", "Direção")
+    from frappe.precast_sst import atualizar_leitura
+    return atualizar_leitura(ativo, leitura)
+
+
+@endpoint()
+def historico_manutencao_ativo(ativo):
+    from frappe.precast_sst import historico_manutencao
+    return {"success": True, "historico": historico_manutencao(ativo)}
+
+
+@endpoint()
+def excluir_ativo_operacional(nome):
+    _exigir_papel("Logística", "Direção")
+    if not frappe.db.exists("Ativo Operacional", nome):
+        return {"success": False, "error": "Equipamento não encontrado."}
+    for m in frappe.get_all("Manutencao Ativo", filters={"ativo": nome}, pluck="name"):
+        frappe.delete_doc("Manutencao Ativo", m, ignore_permissions=True, force=True)
+    frappe.delete_doc("Ativo Operacional", nome, ignore_permissions=True, force=True)
+    frappe.db.commit()
+    return {"success": True}
+
+
+@endpoint(allow_guest=True)
+def termo_lgpd():
+    from frappe.precast_sst import termo
+    return termo()
+
+
+@endpoint()
+def lgpd_exportar_titular(usuario):
+    _exigir_papel("Direção")
+    from frappe.precast_sst import exportar_titular
+    return exportar_titular(usuario)
+
+
+@endpoint()
+def lgpd_excluir_titular(usuario):
+    _exigir_papel("Direção")
+    from frappe.precast_sst import excluir_titular
+    return excluir_titular(usuario)
+
+
 @endpoint()
 def get_transportadoras():
     return {"success": True, "transportadoras": frappe.get_all('Transportadora',
@@ -951,10 +1196,10 @@ def delete_motorista(nome):
 @endpoint()
 def get_caminhoes():
     return {"success": True, "caminhoes": frappe.get_all('Caminhao',
-        fields=['placa', 'transportadora', 'capacidade_kg', 'motorista_padrao'], order_by='placa asc')}
+        fields=['placa', 'transportadora', 'capacidade_kg', 'motorista_padrao', 'comprimento_m'], order_by='placa asc')}
 
 @endpoint()
-def create_caminhao(placa, capacidade_kg, transportadora=None, motorista_padrao=None):
+def create_caminhao(placa, capacidade_kg, transportadora=None, motorista_padrao=None, comprimento_m=None):
     _exigir_papel("Logística", "Direção")
     if not placa or not capacidade_kg:
         return {"success": False, "error": "Placa e capacidade são obrigatórios"}
@@ -962,7 +1207,8 @@ def create_caminhao(placa, capacidade_kg, transportadora=None, motorista_padrao=
     if frappe.db.exists('Caminhao', placa):
         return {"success": False, "error": f"Caminhão '{placa}' já existe."}
     frappe.get_doc({"doctype": "Caminhao", "placa": placa, "capacidade_kg": capacidade_kg,
-                     "transportadora": transportadora, "motorista_padrao": motorista_padrao}).insert(ignore_permissions=True)
+                     "transportadora": transportadora, "motorista_padrao": motorista_padrao,
+                     "comprimento_m": float(comprimento_m) if comprimento_m not in (None, "") else None}).insert(ignore_permissions=True)
     frappe.db.commit()
     return {"success": True, "message": "Caminhão cadastrado"}
 
@@ -988,7 +1234,7 @@ def get_pecas_liberadas_expedicao(obra=None):
 @endpoint()
 def get_romaneios():
     romaneios = frappe.get_all('Romaneio', fields=[
-        'codigo', 'obra', 'caminhao', 'motorista', 'data_expedicao', 'status', 'peso_total_kg'
+        'codigo', 'obra', 'caminhao', 'motorista', 'data_expedicao', 'status', 'peso_total_kg', 'ordem_carga'
     ], order_by='data_expedicao desc')
     for r in romaneios:
         r['pecas'] = frappe.get_all('Peca Pre-Moldada', filters={'romaneio': r.codigo},
@@ -1314,10 +1560,10 @@ def rosto_desafio():
 
 
 @endpoint(allow_guest=True)
-def rosto_entrar(descritor, nome=None, setor=None, desafio=None):
+def rosto_entrar(descritor, nome=None, setor=None, desafio=None, consentimento=False):
     """Entrada do operador pelo rosto: o celular manda só o descritor (a foto não sai do aparelho)."""
     from frappe.precast_rosto import entrar
-    return entrar(descritor, nome, setor, desafio)
+    return entrar(descritor, nome, setor, desafio, consentimento)
 
 
 @endpoint()
@@ -1415,6 +1661,7 @@ SECOES_PORTAL = [
     ("entregas", "Entregas", "Romaneios, datas e quem recebeu"),
     ("diario", "Diário de obra", "Texto do que foi feito a cada dia"),
     ("fotos", "Fotos do diário", "Fotos enviadas pelo encarregado"),
+    ("dossie", "Dossiê da peça (RG)", "O cliente abre o RG de cada peça: concreto, resistência, certificados do aço, fases e inspeções (sem nomes de pessoas)"),
 ]
 
 
@@ -1425,7 +1672,7 @@ def _config_portal(codigo_obra):
         salvo = json.loads(bruto) if bruto else {}
     except ValueError:
         salvo = {}
-    secoes = {chave: bool((salvo.get("secoes") or {}).get(chave, True)) for chave, _, _ in SECOES_PORTAL}
+    secoes = {chave: bool((salvo.get("secoes") or {}).get(chave, chave != "dossie")) for chave, _, _ in SECOES_PORTAL}   # o dossiê só abre quando o dono liga
     return {"ativo": bool(salvo.get("ativo", True)), "secoes": secoes,
             "mensagem": str(salvo.get("mensagem") or ""), "versao": int(salvo.get("versao") or 0)}
 
@@ -2460,7 +2707,7 @@ def delete_obra(codigo_obra):
         frappe.delete_doc('Peca Pre-Moldada', p.name, ignore_permissions=True, force=True)
         deleted_pieces += 1
         
-    for doctype in ("Revisao Projeto", "Plano Corte"):
+    for doctype in ("Revisao Projeto", "Plano Corte", "Pedido Compra", "Titulo Pagar"):
         for nome in frappe.get_all(doctype, filters={"obra": codigo_obra}, pluck="name"):
             frappe.delete_doc(doctype, nome, ignore_permissions=True, force=True)
     frappe.defaults.clear_default(key=f"portal_cfg:{codigo_obra}", parent="__default")  # o que o cliente via e o link não passam para uma obra nova de mesmo código
@@ -3022,6 +3269,21 @@ def _filtrar_portal(dados, cfg):
             diario.append({**r, "resumo": r.get("resumo") if sec["diario"] else "", "fotos": r.get("fotos", []) if sec["fotos"] else []})
     saida["diario"] = diario if (sec["diario"] or sec["fotos"]) else None
     return saida
+
+
+@endpoint(allow_guest=True)
+def get_rg_publico(codigo_obra, t=None, tag=None):
+    """Portal do cliente: o RG de uma peça da obra, sem dados internos. Só abre com o link válido e o dossiê ligado."""
+    if not t or not hmac.compare_digest(str(t), _token_portal(codigo_obra)) or not frappe.db.exists('Obra', codigo_obra):
+        return {"success": False, "error": "Link inválido ou expirado. Peça um novo link à empresa."}
+    cfg = _config_portal(codigo_obra)
+    if not cfg["ativo"] or not cfg["secoes"].get("dossie"):
+        return {"success": False, "error": "O dossiê das peças não está disponível. Fale com a empresa."}
+    codigo = frappe.db.get_value('Peca Pre-Moldada', {'obra': codigo_obra, 'tag': tag or ''}, 'name')
+    if not codigo:
+        return {"success": False, "error": "Peça não encontrada nesta obra."}
+    from frappe.precast_qualidade import rg_publico
+    return rg_publico(codigo)
 
 
 @endpoint()

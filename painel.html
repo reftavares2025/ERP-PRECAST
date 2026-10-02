@@ -134,6 +134,8 @@
     .nav-tab.tab-cliente.active::after { background: var(--c-geral); }
     .nav-tab.tab-qualidade.active::after { background: var(--c-qualidade); }
     .nav-tab.tab-cotacoes.active::after { background: var(--c-cotacoes); }
+    .nav-tab.tab-suprimentos.active::after { background: #14b8a6; }
+    .nav-tab.tab-seguranca.active::after { background: #f97316; }
     .nav-tab.tab-rh.active::after { background: #db2777; }
     .nav-tab.tab-fiscal.active::after { background: #f59e0b; }
     .fiscal-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:10px; }
@@ -886,6 +888,7 @@
       <div class="nav-tab tab-montagem" onclick="switchModule('montagem')">Montagem</div>
       <div class="nav-tab tab-cliente" onclick="switchModule('cliente')">Cliente</div>
       <div class="nav-tab tab-qualidade" onclick="switchModule('qualidade')">Qualidade</div>
+      <div class="nav-tab tab-seguranca" onclick="switchModule('seguranca')">Segurança</div>
       <div class="nav-tab tab-qrcode" onclick="switchModule('qrcode')">📱 Lançamentos QR Code</div>
       <div class="nav-tab tab-cotacoes" onclick="switchModule('cotacoes')">Cotações</div>
 
@@ -897,9 +900,7 @@
         Financeiro <span class="erp-badge">ERP</span>
       </div>
       <div class="nav-tab tab-fiscal" onclick="switchModule('fiscal')">Fiscal</div>
-      <div class="nav-tab tab-suprimentos" onclick="switchModule('suprimentos')">
-        Suprimentos <span class="erp-badge">ERP</span>
-      </div>
+      <div class="nav-tab tab-suprimentos" onclick="switchModule('suprimentos')">Suprimentos</div>
       <div class="nav-tab tab-rh" onclick="switchModule('rh')">
         RH <span class="erp-badge">ERP</span>
       </div>
@@ -1412,6 +1413,187 @@
             <div class="rastro-titulo">Ocupação das formas (cada forma segura a peça pelo tempo do seu ciclo de cura)</div>
             <div style="overflow-x:auto;"><table class="rg-tabela" id="patioMapa"></table></div>
             <div id="patioMsg" style="font-size:12px; margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- VIEW: LOGÍSTICA - PLANEJAR CARGAS          -->
+      <!-- ========================================== -->
+      <div id="viewPlanoCargas" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+        <div class="filter-panel" style="border-top: 2px solid var(--c-logistica); flex-wrap:wrap;">
+          <div class="filter-group"><span class="filter-label">Obra</span><select class="filter-select" id="cargasObra"></select></div>
+          <div class="filter-group"><span class="filter-label">Balanço permitido (m)</span><input type="number" class="filter-input" id="cargasBalanco" value="2" step="0.5" style="width:90px;"></div>
+          <button class="filter-badge-btn" onclick="cargasOrdemPadrao()">Ordem de montagem padrão</button>
+          <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981;" onclick="cargasPlanejar()">🧮 Planejar cargas</button>
+        </div>
+        <div style="padding:16px; display:grid; gap:14px;">
+          <div id="cargasMsg" style="font-size:12px;"></div>
+          <div id="cargasResultado"></div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- VIEW: LOGÍSTICA - IÇAMENTO E CRONOGRAMA    -->
+      <!-- ========================================== -->
+      <div id="viewIcamento" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+        <div style="padding:16px; display:grid; gap:16px;">
+          <div class="rastro-card">
+            <div class="rastro-titulo">1. Equipamentos de içamento (guindaste, munck, ponte)</div>
+            <div class="rastro-campos" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+              <input class="filter-input" id="eqNome" placeholder="Nome *">
+              <input class="filter-input" id="eqTipo" placeholder="Tipo (Guindaste)">
+              <input class="filter-input" id="eqCap" type="number" placeholder="Capacidade máxima (kg) *">
+              <input class="filter-input" id="eqFator" type="number" step="0.05" placeholder="Fator de segurança (1,25)">
+            </div>
+            <textarea class="filter-input" id="eqTabela" rows="4" style="width:100%; margin-top:8px;" placeholder="Tabela de carga do fabricante, uma linha por raio: raio em m ; capacidade em kg&#10;8 ; 40000&#10;12 ; 25000&#10;16 ; 14000"></textarea>
+            <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981; margin-top:8px;" onclick="eqSalvar()">+ Salvar equipamento</button>
+            <div id="eqLista" style="margin-top:10px;"></div>
+          </div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">2. Plano de içamento (a peça cabe no guindaste nesse raio?)</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+              <select class="filter-select" id="icObra"></select>
+              <select class="filter-select" id="icEquip"></select>
+              <input class="filter-input" id="icRaio" type="number" step="0.5" placeholder="Raio de trabalho (m)" style="width:170px;">
+              <button class="filter-badge-btn" style="background:#2563EB; border-color:#3B82F6;" onclick="icPlano()">Conferir</button>
+            </div>
+            <div id="icResultado" style="margin-top:10px;"></div>
+          </div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">3. Cronograma da montagem (planejado × montado)</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+              <select class="filter-select" id="crObra"></select>
+              <input type="date" class="filter-input" id="crInicio" style="width:150px;">
+              <input class="filter-input" id="crRitmo" type="number" min="1" placeholder="Peças por dia" style="width:130px;">
+              <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981;" onclick="crCalcular(true)">Planejar e gravar datas</button>
+              <button class="filter-badge-btn" onclick="crCalcular(false)">Ver acompanhamento</button>
+            </div>
+            <div id="crResultado" style="margin-top:10px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- VIEW: SUPRIMENTOS                          -->
+      <!-- ========================================== -->
+      <div id="viewSuprimentos" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+        <div style="padding:16px; display:grid; gap:16px;">
+          <div class="rastro-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+              <div class="rastro-titulo" style="margin:0;">1. Necessidade de materiais pela produção (peças ainda sem aço cortado e sem concretar)</div>
+              <select class="filter-select" id="supObra" onchange="supNecessidade()"></select>
+            </div>
+            <div id="supNecessidade"></div>
+          </div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">2. Novo pedido de compra</div>
+            <div class="rastro-campos" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+              <input class="filter-input" id="pcItem" placeholder="Item * (ex.: Aço CA-50 Ø10)">
+              <select class="filter-select" id="pcCategoria" onchange="document.getElementById('pcBitola').style.display = this.value === 'Aço' ? '' : 'none'"><option>Aço</option><option>Cimento</option><option>Agregado</option><option>Outros</option></select>
+              <input class="filter-input" id="pcBitola" type="number" step="0.1" placeholder="Bitola (mm)">
+              <input class="filter-input" id="pcQtd" type="number" step="any" placeholder="Quantidade *">
+              <input class="filter-input" id="pcUn" placeholder="Unidade" value="kg">
+              <input class="filter-input" id="pcPreco" type="number" step="any" placeholder="Preço unitário (R$) *">
+              <input class="filter-input" id="pcForn" placeholder="Fornecedor *">
+              <select class="filter-select" id="pcObra"></select>
+            </div>
+            <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981; margin-top:8px;" onclick="supSolicitar()">+ Solicitar compra</button>
+            <span id="supMsg" style="font-size:12px; margin-left:10px;"></span>
+          </div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">3. Pedidos de compra</div>
+            <div class="table-container" style="height:auto; max-height:320px;"><table class="rg-tabela"><thead><tr><th>Nº</th><th>Item</th><th>Fornecedor</th><th>Obra</th><th>Quantidade</th><th>Valor</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="supPedidos"></tbody></table></div>
+            <div style="font-size:11px; color:#64748b; margin-top:6px;">Alçada: até <b id="supAlcadaTxt">R$ 5.000</b> aprovam Produção, Financeiro ou Direção; acima disso, só a Direção. Quem fez o pedido não o aprova.</div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+              <span style="font-size:12px; color:#94a3b8;">Alçada (R$)</span><input class="filter-input" id="supAlcada" type="number" style="width:110px;">
+              <span style="font-size:12px; color:#94a3b8;">Prazo de entrega (dias)</span><input class="filter-input" id="supPrazo" type="number" style="width:80px;">
+              <button class="filter-badge-btn" onclick="supSalvarConfig()">Salvar</button>
+              <a class="filter-badge-btn" style="text-decoration:none;" href="/app/purchase-order" target="_blank">Abrir o pedido de compra do ERP</a>
+            </div>
+          </div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">4. Contas a pagar e fluxo de caixa projetado</div>
+            <div id="supFluxo"></div>
+            <div class="table-container" style="height:auto; max-height:240px; margin-top:10px;"><table class="rg-tabela"><thead><tr><th>Fornecedor</th><th>Pedido</th><th>Valor</th><th>Vencimento</th><th>Situação</th><th></th></tr></thead><tbody id="supTitulos"></tbody></table></div>
+          </div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">5. Orçado × realizado por obra</div>
+            <table class="rg-tabela"><thead><tr><th>Obra</th><th>Peças</th><th>Orçado</th><th>Comprometido</th><th>Recebido</th><th>Consumo</th><th>Preço de venda</th><th>Margem</th></tr></thead><tbody id="supOrcado"></tbody></table>
+          </div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">6. Estoque de aço por corrida</div>
+            <div id="supEstoque"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- VIEW: SEGURANÇA DO TRABALHO                -->
+      <!-- ========================================== -->
+      <div id="viewSeguranca" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+        <div style="padding:16px; display:grid; gap:16px;">
+          <div class="meta-summary-card" style="margin:0;" id="segKpis"></div>
+          <div class="rastro-card">
+            <label style="font-size:13px; display:flex; gap:8px; align-items:center; cursor:pointer; color:#e2e8f0;">
+              <input type="checkbox" id="segExigir" onchange="segExigir(this.checked)">
+              Exigir treinamento em dia de quem opera por rosto: NR-11 para movimentar peças no pátio e na expedição, NR-35 para a montagem em obra
+            </label>
+            <div id="segMsg" style="font-size:12px; margin-top:6px;"></div>
+          </div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">Novo registro</div>
+            <div class="rastro-campos" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));">
+              <select class="filter-select" id="segTipo" onchange="segTipoMudou()"><option>Treinamento</option><option>ASO</option><option>EPI</option><option>Acidente</option><option>Inspeção</option></select>
+              <input class="filter-input" id="segPessoa" placeholder="Pessoa *">
+              <input class="filter-input" id="segDocumento" placeholder="Treinamento (NR-35) *">
+              <input class="filter-input" id="segFuncao" placeholder="Função">
+              <input class="filter-input" id="segEmissao" type="date" title="Data">
+              <input class="filter-input" id="segValidade" type="date" title="Validade">
+              <input class="filter-input" id="segObs" placeholder="Observações">
+              <input class="filter-input" id="segDias" type="number" placeholder="Dias de afastamento" style="display:none;">
+              <label id="segCatLabel" style="display:none; font-size:12px; align-items:center; gap:6px; color:#cbd5e1;"><input type="checkbox" id="segCat"> CAT emitida</label>
+            </div>
+            <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981; margin-top:8px;" onclick="segRegistrar()">+ Registrar</button>
+          </div>
+          <div class="rastro-card"><div class="rastro-titulo">Treinamentos exigidos por pessoa</div><div id="segMatriz"></div></div>
+          <div class="rastro-card"><div class="rastro-titulo">Vencidos e a vencer (próximos 30 dias)</div><div id="segVencimentos"></div></div>
+          <div class="rastro-card"><div class="rastro-titulo">Registros</div>
+            <div class="table-container" style="height:auto; max-height:340px;"><table class="rg-tabela"><thead><tr><th>Tipo</th><th>Pessoa</th><th>Treinamento / exame / EPI</th><th>Data</th><th>Validade</th><th>Situação</th></tr></thead><tbody id="segRegistros"></tbody></table></div></div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- VIEW: LOGÍSTICA - MANUTENÇÃO DA FROTA      -->
+      <!-- ========================================== -->
+      <div id="viewManutencao" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+        <div style="padding:16px; display:grid; gap:16px;">
+          <div class="rastro-card">
+            <div class="rastro-titulo">Cadastrar ou atualizar equipamento</div>
+            <div class="rastro-campos" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+              <input class="filter-input" id="atNome" placeholder="Nome ou placa *">
+              <select class="filter-select" id="atTipo"><option>Caminhão</option><option>Guindaste</option><option>Ponte rolante</option><option>Empilhadeira</option><option>Equipamento</option></select>
+              <select class="filter-select" id="atMedida"><option>Horas</option><option>Km</option></select>
+              <input class="filter-input" id="atLeitura" type="number" step="any" placeholder="Leitura atual (h ou km)">
+              <input class="filter-input" id="atIntervalo" type="number" step="any" placeholder="Manutenção a cada...">
+              <input class="filter-input" id="atDoc" type="date" title="Vencimento do documento (CRLV, ART...)">
+            </div>
+            <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981; margin-top:8px;" onclick="atSalvar()">+ Salvar equipamento</button>
+            <span id="atMsg" style="font-size:12px; margin-left:10px;"></span>
+          </div>
+          <div class="rastro-card"><div class="rastro-titulo">Equipamentos</div>
+            <table class="rg-tabela"><thead><tr><th>Equipamento</th><th>Tipo</th><th>Leitura</th><th>Manutenção</th><th>Documento</th><th>Custo (12 meses)</th><th></th></tr></thead><tbody id="atLista"></tbody></table></div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">Registrar manutenção</div>
+            <div class="rastro-campos" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+              <select class="filter-select" id="mtAtivo"></select>
+              <select class="filter-select" id="mtTipo"><option>Preventiva</option><option>Corretiva</option></select>
+              <input class="filter-input" id="mtLeitura" type="number" step="any" placeholder="Leitura na manutenção">
+              <input class="filter-input" id="mtCusto" type="number" step="any" placeholder="Custo (R$)">
+              <input class="filter-input" id="mtDescricao" placeholder="O que foi feito">
+            </div>
+            <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981; margin-top:8px;" onclick="mtRegistrar()">+ Registrar manutenção</button>
+            <div id="mtHistorico" style="margin-top:10px;"></div>
           </div>
         </div>
       </div>
@@ -2516,8 +2698,18 @@
         subs.forEach(t => t.classList.remove('active'));
         subs[1].classList.add('active');
         switchSubScreen('montagem');
+      } else if (mod === 'seguranca') {
+        hideAllViews();
+        document.getElementById('viewSeguranca').classList.remove('hidden');
+        document.getElementById('subbar').classList.add('hidden');
+        document.getElementById('screenTitle').innerText = 'Segurança do Trabalho — Treinamentos, Exames, EPI e Acidentes';
+        carregarSeguranca();
       } else if (mod === 'suprimentos') {
-        window.open('/app/purchase-order', '_blank');
+        hideAllViews();
+        document.getElementById('viewSuprimentos').classList.remove('hidden');
+        document.getElementById('subbar').classList.add('hidden');
+        document.getElementById('screenTitle').innerText = 'Suprimentos — Necessidade, Pedidos e Contas a Pagar';
+        carregarSuprimentos();
       } else if (mod === 'rh') {
         window.open('/desk/employee', '_blank');
       } else if (mod === 'equipe') {
@@ -2537,6 +2729,9 @@
         <div class="subtab active" onclick="setSubtabLogistica(this, 'romaneio')">🚚 Romaneio de Carga</div>
         <div class="subtab" onclick="setSubtabLogistica(this, 'montagem')">🏗️ Montagem em Obra</div>
         <div class="subtab" onclick="setSubtabLogistica(this, 'frota')">🧾 Cadastros (Frota/Motoristas)</div>
+        <div class="subtab" onclick="setSubtabLogistica(this, 'manutencao')">🔧 Manutenção</div>
+        <div class="subtab" onclick="setSubtabLogistica(this, 'cargas')">🧮 Planejar Cargas</div>
+        <div class="subtab" onclick="setSubtabLogistica(this, 'icamento')">🏗️ Içamento e Cronograma</div>
       `;
     }
     function setSubtabLogistica(el, screen) {
@@ -2609,6 +2804,18 @@
         document.getElementById('viewEstoqueArmacao').classList.remove('hidden');
         document.getElementById('screenTitle').innerText = 'Estoque de Armação — Corte & Dobra';
         loadEstoqueArmacao();
+      } else if (screen === 'manutencao') {
+        document.getElementById('viewManutencao').classList.remove('hidden');
+        document.getElementById('screenTitle').innerText = 'Manutenção da Frota e dos Equipamentos';
+        carregarManutencao();
+      } else if (screen === 'cargas') {
+        document.getElementById('viewPlanoCargas').classList.remove('hidden');
+        document.getElementById('screenTitle').innerText = 'Planejamento das Cargas — Caminhões';
+        carregarCargas();
+      } else if (screen === 'icamento') {
+        document.getElementById('viewIcamento').classList.remove('hidden');
+        document.getElementById('screenTitle').innerText = 'Içamento, Guindaste e Cronograma da Montagem';
+        carregarIcamento();
       } else if (screen === 'patio') {
         document.getElementById('viewPlanejadorPatio').classList.remove('hidden');
         document.getElementById('screenTitle').innerText = 'Planejador de Pátio e Formas';
@@ -3321,6 +3528,11 @@
       document.getElementById('viewQualidade').classList.add('hidden');
       document.getElementById('viewPlanoCorte').classList.add('hidden');
       document.getElementById('viewPlanejadorPatio').classList.add('hidden');
+      document.getElementById('viewPlanoCargas').classList.add('hidden');
+      document.getElementById('viewIcamento').classList.add('hidden');
+      document.getElementById('viewSuprimentos').classList.add('hidden');
+      document.getElementById('viewSeguranca').classList.add('hidden');
+      document.getElementById('viewManutencao').classList.add('hidden');
     }
 
     function clearActiveTabs() {
@@ -4142,11 +4354,13 @@
       document.getElementById('rostoCadastroAberto').checked = d.cadastro_aberto;
       document.getElementById('rostoProvaDeVida').checked = d.prova_de_vida;
       el.innerHTML = d.operadores.length ? `<table class="tabela-industrial" style="width:100%"><thead><tr><th>Nome</th><th>Setores liberados</th><th>Último acesso</th><th></th></tr></thead><tbody>${
-        d.operadores.map(o => `<tr style="${o.ativo ? '' : 'opacity:.5;'}"><td><b>${escHtml(o.nome)}</b></td>
+        d.operadores.map(o => `<tr style="${o.ativo ? '' : 'opacity:.5;'}"><td><b>${escHtml(o.nome)}</b><div style="font-size:10px; color:${o.consentimento ? '#4ade80' : '#fbbf24'};">${o.consentimento ? 'consentimento registrado' : 'sem consentimento registrado'}</div></td>
           <td>${d.setores.map(st => `<label style="display:inline-flex; gap:4px; align-items:center; margin-right:10px;"><input type="checkbox" ${o.setores.includes(st) ? 'checked' : ''} onchange="rostoSetoresDe('${escHtml(o.usuario)}')" data-rosto="${escHtml(o.usuario)}" value="${escHtml(st)}">${escHtml(st)}</label>`).join('')}</td>
           <td>${escHtml(o.ultimo_acesso || '—')}</td>
           <td><button class="filter-badge-btn" onclick="rostoGerir('${escHtml(o.usuario)}', '${o.ativo ? 'bloquear' : 'liberar'}')">${o.ativo ? 'Bloquear' : 'Liberar'}</button>
-              <button class="filter-badge-btn" style="background:#7f1d1d; border-color:#ef4444;" onclick="if (confirm('Remover o cadastro de ${escHtml(o.nome)}? Ele terá que se cadastrar de novo.')) rostoGerir('${escHtml(o.usuario)}', 'remover')">Remover</button></td></tr>`).join('')}</tbody></table>`
+              <button class="filter-badge-btn" style="background:#7f1d1d; border-color:#ef4444;" onclick="if (confirm('Remover o cadastro de ${escHtml(o.nome)}? Ele terá que se cadastrar de novo.')) rostoGerir('${escHtml(o.usuario)}', 'remover')">Remover</button>
+              <button class="filter-badge-btn" title="Cópia dos dados do titular (LGPD)" onclick="lgpdExportar('${escHtml(o.usuario)}')">Cópia dos dados</button>
+              <button class="filter-badge-btn" style="background:#7f1d1d; border-color:#ef4444;" title="Apaga o rosto, retira o consentimento e tira o nome das etapas de produção" onclick="lgpdExcluir('${escHtml(o.usuario)}', '${escHtml(o.nome)}')">Excluir dados (LGPD)</button></td></tr>`).join('')}</tbody></table>`
         : '<span style="color:#64748b;">Ninguém se cadastrou ainda. Mande o link /bipar para o operador.</span>';
     }
 
@@ -6002,6 +6216,321 @@
         patioMsg(`${d.programadas} peça(s) programada(s)` + (d.falhas.length ? `; ${d.falhas.length} não deu(ram) mais (alguém ocupou a forma): ${d.falhas.map(f => f.erro).join(' ')}` : '.'), d.falhas.length ? '#fbbf24' : '#4ade80');
         await fetchPiecesFromERP(); carregarPatio();
       } catch (e) { patioMsg(e.message, '#ef4444'); }
+    }
+
+    // ---------------- Logística: cargas, içamento e cronograma da montagem ----------------
+    let cargasAtuais = null;
+
+    async function preencherObras(ids) {
+      if (!erpPieces.length) await fetchPiecesFromERP();
+      const obras = [...new Set((erpPieces || []).map(p => p.obra).filter(Boolean))].sort();
+      ids.forEach(id => {
+        const sel = document.getElementById(id), atual = sel.value;
+        sel.innerHTML = obras.map(o => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('') || '<option value="">Nenhuma obra</option>';
+        if (obras.includes(atual)) sel.value = atual;
+      });
+    }
+
+    function cargasMsg(t, c) { const el = document.getElementById('cargasMsg'); el.style.color = c || '#94a3b8'; el.textContent = t; }
+
+    async function carregarCargas() { await preencherObras(['cargasObra']); }
+
+    async function cargasOrdemPadrao() {
+      try { const d = await rastroApi('definir_sequencia_montagem', {obra: document.getElementById('cargasObra').value}); cargasMsg(`Ordem de montagem gravada para ${d.pecas} peça(s): fundação, pilar, viga, laje e painel.`, '#4ade80'); }
+      catch (e) { cargasMsg(e.message, '#ef4444'); }
+    }
+
+    async function cargasPlanejar() {
+      cargasMsg('Planejando...');
+      try {
+        const d = await rastroApi('planejar_cargas', {obra: document.getElementById('cargasObra').value, balanco_m: document.getElementById('cargasBalanco').value});
+        cargasAtuais = d; cargasMsg('');
+        const amanha = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+        document.getElementById('cargasResultado').innerHTML = `
+          <div class="meta-summary-card" style="margin:0;"><div class="meta-stat"><span class="meta-stat-label">Viagens</span><span class="meta-stat-val highlight">${d.resumo.viagens}</span></div>
+            <div class="meta-stat"><span class="meta-stat-label">Peças</span><span class="meta-stat-val highlight">${d.resumo.pecas}</span></div>
+            <div class="meta-stat"><span class="meta-stat-label">Peso</span><span class="meta-stat-val highlight">${Math.round(d.resumo.peso_kg).toLocaleString('pt-BR')} kg</span></div></div>
+          ${d.cargas.map(c => `<div class="rastro-card"><div class="rastro-titulo">Viagem ${c.viagem} · caminhão ${escHtml(c.caminhao)} · ${Math.round(c.peso_kg).toLocaleString('pt-BR')} de ${Math.round(c.capacidade_kg).toLocaleString('pt-BR')} kg (${c.utilizacao_pct}%)</div>
+            <div style="height:8px; background:#1e293b; border-radius:4px; overflow:hidden; margin-bottom:8px;"><div style="height:100%; width:${Math.min(c.utilizacao_pct, 100)}%; background:${c.utilizacao_pct > 95 ? '#f59e0b' : '#10B981'};"></div></div>
+            <div style="font-size:12px; color:#94a3b8; margin-bottom:6px;">Carregar nesta ordem (a primeira a montar entra por último): <b style="color:#e2e8f0;">${c.ordem_carregamento.map(cod => escHtml((c.pecas.find(p => p.codigo_peca === cod) || {}).tag || cod)).join(' → ')}</b></div>
+            <table class="rg-tabela"><thead><tr><th>Montagem</th><th>Peça</th><th>Produto</th><th>Peso</th><th>Comprimento</th></tr></thead><tbody>${c.pecas.map((p, i) => `<tr><td>${i + 1}º</td><td>${escHtml(p.tag)}</td><td>${escHtml(p.produto || '')}</td><td>${Math.round(p.peso_kg)} kg</td><td>${p.comprimento_m} m</td></tr>`).join('')}</tbody></table></div>`).join('')}
+          ${d.nao_atendidas.length ? `<div class="rastro-card" style="border-color:#f59e0b;"><div class="rastro-titulo" style="color:#fbbf24;">Não cabem em nenhum caminhão da frota</div>${d.nao_atendidas.map(n => `<div style="font-size:12px;">⚠️ <b>${escHtml(n.tag)}</b>: ${escHtml(n.motivo)}</div>`).join('')}</div>` : ''}
+          ${d.cargas.length ? `<div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;"><span style="font-size:12px; color:#94a3b8;">Data da primeira expedição</span><input type="date" class="filter-input" id="cargasData" value="${amanha}" style="width:150px;"><button class="filter-badge-btn" style="background:#10B981; border-color:#10B981;" onclick="cargasCriar()">✓ Criar os romaneios</button></div>` : ''}`;
+      } catch (e) { cargasMsg(e.message, '#ef4444'); document.getElementById('cargasResultado').innerHTML = ''; }
+    }
+
+    async function cargasCriar() {
+      try {
+        const d = await rastroApi('aplicar_plano_cargas', {obra: document.getElementById('cargasObra').value, data_expedicao: document.getElementById('cargasData').value, cargas: cargasAtuais.cargas});
+        cargasMsg(`${d.romaneios.length} romaneio(s) criado(s): ${d.romaneios.map(r => r.romaneio).join(', ')}.` + (d.falhas.length ? ` Não criou ${d.falhas.length}: ${d.falhas.map(f => f.erro).join(' ')}` : ''), d.falhas.length ? '#fbbf24' : '#4ade80');
+        document.getElementById('cargasResultado').innerHTML = '';
+        await fetchPiecesFromERP();
+      } catch (e) { cargasMsg(e.message, '#ef4444'); }
+    }
+
+    // ---- equipamentos, plano de içamento e cronograma
+    async function carregarIcamento() {
+      await preencherObras(['icObra', 'crObra']);
+      if (!document.getElementById('crInicio').value) document.getElementById('crInicio').value = new Date().toISOString().slice(0, 10);
+      try {
+        const d = await rastroApi('listar_equipamentos_icamento');
+        document.getElementById('icEquip').innerHTML = d.equipamentos.map(e => `<option value="${escHtml(e.nome)}">${escHtml(e.nome)}</option>`).join('') || '<option value="">Cadastre um equipamento</option>';
+        document.getElementById('eqLista').innerHTML = d.equipamentos.length ? `<table class="rg-tabela"><thead><tr><th>Equipamento</th><th>Tipo</th><th>Máxima</th><th>Fator</th><th>Tabela de carga</th><th></th></tr></thead><tbody>${d.equipamentos.map(e => `<tr><td><b>${escHtml(e.nome)}</b></td><td>${escHtml(e.tipo || '')}</td><td>${Math.round(e.capacidade_max_kg)} kg</td><td>${e.fator_seguranca}</td><td>${e.tabela_carga.map(l => `${l.raio_m} m: ${Math.round(l.capacidade_kg)} kg`).join(' · ') || '<span style="color:#fbbf24;">sem tabela</span>'}</td><td><button class="btn-prancha" onclick="eqExcluir('${escHtml(e.nome)}')">Excluir</button></td></tr>`).join('')}</tbody></table>` : '';
+      } catch (e) { document.getElementById('eqLista').textContent = e.message; }
+    }
+
+    async function eqSalvar() {
+      const tabela = document.getElementById('eqTabela').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [r, c] = l.split(/[;\t]/).map(x => parseFloat(String(x).replace(',', '.'))); return {raio_m: r, capacidade_kg: c}; });
+      try {
+        await rastroApi('salvar_equipamento_icamento', {nome: document.getElementById('eqNome').value, tipo: document.getElementById('eqTipo').value, capacidade_max_kg: document.getElementById('eqCap').value, fator_seguranca: document.getElementById('eqFator').value || null, tabela_carga: tabela});
+        ['eqNome', 'eqTipo', 'eqCap', 'eqFator', 'eqTabela'].forEach(id => { document.getElementById(id).value = ''; });
+        carregarIcamento();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function eqExcluir(nome) {
+      if (!confirm(`Excluir o equipamento ${nome}?`)) return;
+      try { await rastroApi('excluir_equipamento_icamento', {nome}); carregarIcamento(); } catch (e) { alert(e.message); }
+    }
+
+    async function icPlano() {
+      const el = document.getElementById('icResultado');
+      try {
+        const d = await rastroApi('plano_icamento', {obra: document.getElementById('icObra').value, equipamento: document.getElementById('icEquip').value, raio_m: document.getElementById('icRaio').value});
+        const cor = {ok: '#14532d; color:#4ade80', atencao: '#713f12; color:#fbbf24', nao: '#7f1d1d; color:#f87171'}, rot = {ok: 'ok', atencao: 'atenção', nao: 'não iça'};
+        el.innerHTML = `<div style="font-size:12px; color:#94a3b8; margin-bottom:6px;">${escHtml(d.equipamento)} a ${d.raio_m} m: capacidade de ${Math.round(d.capacidade_no_raio_kg).toLocaleString('pt-BR')} kg, fator ${d.fator_seguranca}. ${d.resumo.ok} ok · ${d.resumo.atencao} em atenção · ${d.resumo.nao} não içam.</div>
+          ${d.avisos.map(a => `<div style="font-size:12px; color:#fbbf24;">⚠️ ${escHtml(a)}</div>`).join('')}
+          <div style="max-height:320px; overflow:auto;"><table class="rg-tabela"><thead><tr><th>Peça</th><th>Produto</th><th>Peso</th><th>Carga com fator</th><th>Uso</th><th>Alcance máx.</th><th></th></tr></thead><tbody>${d.pecas.map(l => `<tr><td>${escHtml(l.tag)}</td><td>${escHtml(l.produto || '')}</td><td>${Math.round(l.peso_kg)} kg</td><td>${Math.round(l.carga_com_fator_kg)} kg</td><td>${l.utilizacao_pct}%</td><td>${l.raio_maximo_m === null ? '-' : l.raio_maximo_m + ' m'}</td><td><span style="padding:1px 8px; border-radius:4px; font-weight:700; font-size:11px; background:${cor[l.estado]}">${rot[l.estado]}</span></td></tr>`).join('')}</tbody></table></div>`;
+      } catch (e) { el.innerHTML = `<span style="color:#f87171;">${escHtml(e.message)}</span>`; }
+    }
+
+    function curvaS(serie) {
+      const max = Math.max(...serie.map(s => Math.max(s.planejado, s.realizado || 0)), 1), w = 640, h = 180, n = Math.max(serie.length - 1, 1);
+      const ponto = (i, v) => `${(i / n * (w - 40) + 30).toFixed(1)},${(h - 20 - v / max * (h - 40)).toFixed(1)}`;
+      const linha = (campo, cor) => { const pts = serie.map((s, i) => s[campo] === null ? null : ponto(i, s[campo])).filter(Boolean); return pts.length ? `<polyline fill="none" stroke="${cor}" stroke-width="2.5" points="${pts.join(' ')}"/>` : ''; };
+      return `<svg viewBox="0 0 ${w} ${h}" style="width:100%; max-width:${w}px; background:#0f172a; border-radius:8px;"><line x1="30" y1="${h - 20}" x2="${w - 10}" y2="${h - 20}" stroke="#334155"/><line x1="30" y1="10" x2="30" y2="${h - 20}" stroke="#334155"/>
+        <text x="4" y="16" fill="#94a3b8" font-size="10">${max}</text>${linha('planejado', '#3B82F6')}${linha('realizado', '#10B981')}
+        <text x="34" y="${h - 4}" fill="#94a3b8" font-size="10">${serie[0].data}</text><text x="${w - 80}" y="${h - 4}" fill="#94a3b8" font-size="10">${serie[serie.length - 1].data}</text>
+        <text x="${w - 150}" y="22" fill="#3B82F6" font-size="11">— planejado</text><text x="${w - 150}" y="36" fill="#10B981" font-size="11">— montado</text></svg>`;
+    }
+
+    async function crCalcular(gravar) {
+      const el = document.getElementById('crResultado');
+      try {
+        const corpo = {obra: document.getElementById('crObra').value};
+        if (gravar) { corpo.data_inicio = document.getElementById('crInicio').value; corpo.pecas_por_dia = document.getElementById('crRitmo').value; corpo.aplicar = 1; }
+        const d = await rastroApi('cronograma_montagem', corpo), r = d.resumo;
+        const desvio = r.desvio === 0 ? 'no prazo' : r.desvio > 0 ? `${r.desvio} peça(s) adiantada(s)` : `${-r.desvio} peça(s) atrasada(s)`;
+        el.innerHTML = `<div class="meta-summary-card" style="margin:0 0 10px 0;"><div class="meta-stat"><span class="meta-stat-label">Montadas</span><span class="meta-stat-val highlight">${r.montadas} de ${r.pecas}</span></div>
+          <div class="meta-stat"><span class="meta-stat-label">Planejadas até hoje</span><span class="meta-stat-val highlight">${r.planejadas_ate_hoje}</span></div>
+          <div class="meta-stat"><span class="meta-stat-label">Situação</span><span class="meta-stat-val" style="color:${r.desvio < 0 ? '#f87171' : '#4ade80'};">${desvio}</span></div>
+          <div class="meta-stat"><span class="meta-stat-label">Término planejado</span><span class="meta-stat-val highlight">${escHtml(r.termino_planejado)}</span></div>
+          <div class="meta-stat"><span class="meta-stat-label">Término pelo ritmo real</span><span class="meta-stat-val highlight">${escHtml(r.termino_previsto || '-')}</span></div></div>
+          ${curvaS(d.serie)}
+          ${d.atrasadas.length ? `<div class="rg-bloco-titulo">Atrasadas (${d.atrasadas.length})</div><table class="rg-tabela"><thead><tr><th>Peça</th><th>Prevista</th><th>Atraso</th><th>Fase</th></tr></thead><tbody>${d.atrasadas.slice(0, 30).map(a => `<tr><td>${escHtml(a.tag)}</td><td>${escHtml(a.prevista)}</td><td>${a.dias_atraso} dia(s)</td><td>${a.fase}</td></tr>`).join('')}</tbody></table>` : ''}`;
+      } catch (e) { el.innerHTML = `<span style="color:#f87171;">${escHtml(e.message)}</span>`; }
+    }
+
+    // ---------------- Suprimentos: necessidade, pedidos, contas a pagar e orçado x realizado ----------------
+    const supR = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const supKg = v => Number(v || 0).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' kg';
+    function supMsg(t, c) { const el = document.getElementById('supMsg'); el.style.color = c || '#94a3b8'; el.textContent = t; }
+
+    async function carregarSuprimentos() {
+      await preencherObras(['supObra', 'pcObra']);
+      document.getElementById('supObra').insertAdjacentHTML('afterbegin', '<option value="ALL">TODAS AS OBRAS</option>');
+      document.getElementById('supObra').value = 'ALL';
+      document.getElementById('pcObra').insertAdjacentHTML('afterbegin', '<option value="">(sem obra)</option>');
+      document.getElementById('pcObra').value = '';
+      try {
+        const c = await rastroApi('config_compras');
+        document.getElementById('supAlcada').value = c.alcada_producao; document.getElementById('supPrazo').value = c.prazo_dias;
+        document.getElementById('supAlcadaTxt').textContent = supR(c.alcada_producao);
+      } catch (e) { supMsg(e.message, '#ef4444'); }
+      supNecessidade(); supPedidos(); supFinanceiro(); supEstoque();
+    }
+
+    async function supSalvarConfig() {
+      try { await rastroApi('config_compras', {alcada_producao: document.getElementById('supAlcada').value, prazo_dias: document.getElementById('supPrazo').value}); supMsg('Configuração salva.', '#4ade80'); carregarSuprimentos(); }
+      catch (e) { supMsg(e.message, '#ef4444'); }
+    }
+
+    async function supNecessidade() {
+      const el = document.getElementById('supNecessidade');
+      try {
+        const d = await rastroApi('necessidade_materiais', {obra: document.getElementById('supObra').value});
+        const c = d.concreto;
+        el.innerHTML = `<table class="rg-tabela"><thead><tr><th>Aço (bitola)</th><th>Necessário</th><th>Em estoque</th><th>A caminho</th><th>Falta</th><th>Barras de ${d.barra_m} m</th><th>Comprar até</th><th></th></tr></thead><tbody>${d.aco.map(l => `<tr>
+          <td>Ø ${l.bitola_mm} mm</td><td>${supKg(l.necessario_kg)}</td><td>${supKg(l.saldo_kg)}</td><td>${supKg(l.a_caminho_kg)}</td><td style="font-weight:700; color:${l.falta_kg ? '#fbbf24' : '#4ade80'};">${supKg(l.falta_kg)}</td>
+          <td>${l.barras_sugeridas}</td><td style="${l.atrasado ? 'color:#f87171; font-weight:700;' : ''}">${l.comprar_ate ? escHtml(l.comprar_ate) + (l.atrasado ? ' (atrasado)' : '') : '-'}</td>
+          <td>${l.falta_kg ? `<button class="btn-prancha" onclick="supPreencher('Aço CA-50 Ø${l.bitola_mm}', 'Aço', ${l.bitola_mm}, ${l.falta_kg})">Pedir</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" style="color:#64748b;">Nenhuma peça com lista de ferros esperando aço.</td></tr>'}</tbody></table>
+          <div style="font-size:12px; color:#cbd5e1; margin-top:8px;">Concreto: <b>${c.volume_m3} m³</b> a concretar · cimento necessário <b>${supKg(c.cimento_necessario_kg)}</b>, a caminho ${supKg(c.cimento_a_caminho_kg)}, falta <b style="color:${c.cimento_falta_kg ? '#fbbf24' : '#4ade80'};">${supKg(c.cimento_falta_kg)}</b>
+          ${c.cimento_falta_kg ? `<button class="btn-prancha" onclick="supPreencher('Cimento CP-V', 'Cimento', '', ${c.cimento_falta_kg})">Pedir</button>` : ''}</div>`;
+      } catch (e) { el.innerHTML = `<span style="color:#f87171;">${escHtml(e.message)}</span>`; }
+    }
+
+    function supPreencher(item, categoria, bitola, qtd) {
+      document.getElementById('pcItem').value = item; document.getElementById('pcCategoria').value = categoria;
+      document.getElementById('pcBitola').style.display = categoria === 'Aço' ? '' : 'none'; document.getElementById('pcBitola').value = bitola;
+      document.getElementById('pcQtd').value = Math.ceil(qtd); document.getElementById('pcPreco').focus();
+    }
+
+    async function supSolicitar() {
+      try {
+        const d = await rastroApi('solicitar_compra', {item: document.getElementById('pcItem').value, categoria: document.getElementById('pcCategoria').value, bitola_mm: document.getElementById('pcBitola').value || null,
+          quantidade: document.getElementById('pcQtd').value, unidade: document.getElementById('pcUn').value, preco_unitario: document.getElementById('pcPreco').value, fornecedor: document.getElementById('pcForn').value, obra: document.getElementById('pcObra').value || null});
+        supMsg(`Pedido ${d.pedido} de ${supR(d.valor_total)} solicitado. Aprovam: ${d.aprovacao_exigida.join(', ')}.`, '#4ade80');
+        ['pcItem', 'pcQtd', 'pcPreco'].forEach(id => { document.getElementById(id).value = ''; });
+        supPedidos(); supNecessidade();
+      } catch (e) { supMsg(e.message, '#ef4444'); }
+    }
+
+    async function supPedidos() {
+      try {
+        const d = await rastroApi('listar_pedidos_compra');
+        const cor = {Solicitado: '#334155; color:#cbd5e1', Aprovado: '#1e3a8a; color:#93c5fd', Recebido: '#14532d; color:#4ade80', Cancelado: '#7f1d1d; color:#f87171'};
+        document.getElementById('supPedidos').innerHTML = d.pedidos.map(p => `<tr>
+          <td>#${p.name}</td><td>${escHtml(p.item)}${p.bitola_mm ? ' Ø' + p.bitola_mm : ''}</td><td>${escHtml(p.fornecedor)}</td><td>${escHtml(p.obra || '-')}</td><td>${p.quantidade} ${escHtml(p.unidade || '')}</td><td>${supR(p.valor_total)}</td>
+          <td><span style="padding:1px 8px; border-radius:4px; font-size:11px; font-weight:700; background:${cor[p.status]}">${p.status}</span>${p.status === 'Solicitado' ? `<div style="font-size:10px; color:#64748b;">aprova: ${escHtml(p.aprovacao_exigida.join(', '))}</div>` : ''}</td>
+          <td>${p.status === 'Solicitado' ? `<button class="btn-prancha" onclick="supAprovar('${p.name}')">Aprovar</button> ` : ''}${p.status === 'Aprovado' ? `<button class="btn-prancha" onclick="supReceber('${p.name}', '${p.categoria}')">Receber</button> ` : ''}${p.status === 'Solicitado' || p.status === 'Aprovado' ? `<button class="btn-prancha" onclick="supCancelar('${p.name}')">Cancelar</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" style="color:#64748b;">Nenhum pedido.</td></tr>';
+      } catch (e) { supMsg(e.message, '#ef4444'); }
+    }
+
+    async function supAprovar(n) { try { await rastroApi('aprovar_compra', {pedido: n}); supMsg(`Pedido ${n} aprovado.`, '#4ade80'); supPedidos(); supNecessidade(); } catch (e) { supMsg(e.message, '#ef4444'); } }
+    async function supCancelar(n) { if (!confirm(`Cancelar o pedido ${n}?`)) return; try { await rastroApi('cancelar_compra', {pedido: n}); supPedidos(); supNecessidade(); } catch (e) { supMsg(e.message, '#ef4444'); } }
+
+    async function supReceber(n, categoria) {
+      const corrida = categoria === 'Aço' ? prompt('Corrida (lote) do aço recebido, como está no certificado:') : '';
+      if (categoria === 'Aço' && !corrida) return;
+      const nf = prompt('Nota fiscal (opcional):') || '';
+      const venc = prompt('Vencimento do pagamento (AAAA-MM-DD). Deixe vazio para 28 dias:') || '';
+      try { const d = await rastroApi('receber_compra', {pedido: n, corrida, nota_fiscal: nf, vencimento: venc || null}); supMsg(`Pedido ${n} recebido. Pagamento em ${d.vencimento}.`, '#4ade80'); supPedidos(); supFinanceiro(); supEstoque(); supNecessidade(); }
+      catch (e) { supMsg(e.message, '#ef4444'); }
+    }
+
+    async function supFinanceiro() {
+      try {
+        const [t, f, o] = await Promise.all([rastroApi('listar_titulos_pagar'), rastroApi('fluxo_caixa_projetado', {semanas: 8}), rastroApi('orcado_realizado_obras')]);
+        const max = Math.max(...f.semanas.map(s => Math.max(s.pagar, s.receber)), 1);
+        document.getElementById('supFluxo').innerHTML = `<div style="display:grid; grid-template-columns:repeat(${f.semanas.length}, 1fr); gap:6px; align-items:end; min-height:120px;">${f.semanas.map(s => `<div style="text-align:center; font-size:10px; color:#94a3b8;">
+          <div style="display:flex; gap:2px; align-items:end; height:80px; justify-content:center;"><div title="Pagar ${supR(s.pagar)}" style="width:14px; height:${Math.max(2, s.pagar / max * 80)}px; background:#ef4444;"></div><div title="Receber ${supR(s.receber)}" style="width:14px; height:${Math.max(2, s.receber / max * 80)}px; background:#10B981;"></div></div>
+          ${s.de.slice(5).split('-').reverse().join('/')}<div style="color:${s.saldo_acumulado < 0 ? '#f87171' : '#4ade80'};">${supR(s.saldo_acumulado)}</div></div>`).join('')}</div>
+          <div style="font-size:11px; color:#94a3b8; margin-top:4px;"><span style="color:#ef4444;">■ a pagar</span> · <span style="color:#10B981;">■ a receber</span> (faturas em aberto do ERP${f.receber_disponivel ? '' : '; indisponível para o seu acesso'}) · em atraso: pagar ${supR(f.em_atraso.pagar)}, receber ${supR(f.em_atraso.receber)}</div>`;
+        document.getElementById('supTitulos').innerHTML = t.titulos.map(x => `<tr><td>${escHtml(x.fornecedor)}</td><td>#${escHtml(x.pedido || '')}</td><td>${supR(x.valor)}</td><td style="${x.vencido ? 'color:#f87171; font-weight:700;' : ''}">${escHtml(x.vencimento)}${x.vencido ? ' (vencido)' : ''}</td><td>${x.status}</td>
+          <td>${x.status === 'Aberto' ? `<button class="btn-prancha" onclick="supPagar('${x.name}')">Marcar como pago</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" style="color:#64748b;">Nenhum título.</td></tr>';
+        document.getElementById('supOrcado').innerHTML = o.obras.map(x => `<tr><td>${escHtml(x.obra)}</td><td>${x.pecas}</td><td>${supR(x.orcado)}</td><td>${supR(x.comprometido)}</td><td>${supR(x.recebido)}</td>
+          <td style="${x.estourou ? 'color:#f87171; font-weight:700;' : ''}">${x.consumo_pct === null ? '-' : x.consumo_pct + '%'}</td><td>${supR(x.preco_venda)}</td><td>${x.margem_pct === null ? '-' : x.margem_pct + '%'}</td></tr>`).join('') || '<tr><td colspan="8" style="color:#64748b;">Sem obras com peças.</td></tr>';
+      } catch (e) { document.getElementById('supTitulos').innerHTML = `<tr><td colspan="6" style="color:#f87171;">${escHtml(e.message)}</td></tr>`; }
+    }
+
+    async function supPagar(t) { try { await rastroApi('pagar_titulo', {titulo: t}); supFinanceiro(); } catch (e) { supMsg(e.message, '#ef4444'); } }
+
+    async function supEstoque() {
+      try {
+        const d = await rastroApi('saldo_aco_corridas');
+        document.getElementById('supEstoque').innerHTML = d.corridas.length ? `<table class="rg-tabela"><thead><tr><th>Corrida</th><th>Bitola</th><th>Fabricante</th><th>Recebido</th><th>Saldo</th></tr></thead><tbody>${d.corridas.map(c => `<tr><td>${escHtml(c.corrida)}</td><td>Ø ${c.bitola_mm} mm</td><td>${escHtml(c.fabricante || '-')}</td><td>${c.quantidade_kg ? supKg(c.quantidade_kg) : '-'}</td><td>${c.quantidade_kg ? supKg(c.saldo_kg) : '-'}</td></tr>`).join('')}</tbody></table>
+          <div style="font-size:12px; color:#94a3b8; margin-top:6px;">Por bitola: ${Object.entries(d.por_bitola).map(([b, kg]) => `Ø ${b} mm: ${supKg(kg)}`).join(' · ')}</div>` : '<span style="font-size:12px; color:#64748b;">Nenhuma corrida cadastrada. O aço recebido por pedido de compra entra aqui.</span>';
+      } catch (e) { document.getElementById('supEstoque').textContent = e.message; }
+    }
+
+    // ---------------- Segurança do trabalho ----------------
+    function segTipoMudou() {
+      const t = document.getElementById('segTipo').value;
+      document.getElementById('segDocumento').placeholder = {Treinamento: 'Treinamento (NR-35) *', ASO: 'Exame (periódico...) *', EPI: 'EPI e número do CA *', Acidente: 'O que aconteceu', 'Inspeção': 'O que foi inspecionado'}[t];
+      document.getElementById('segDias').style.display = t === 'Acidente' ? '' : 'none';
+      document.getElementById('segCatLabel').style.display = t === 'Acidente' ? 'flex' : 'none';
+    }
+    const segCor = {vencido: '#7f1d1d; color:#f87171', 'a vencer': '#713f12; color:#fbbf24', 'em dia': '#14532d; color:#4ade80', 'sem validade': '#334155; color:#cbd5e1'};
+    const segBadge = e => `<span style="padding:1px 8px; border-radius:4px; font-size:11px; font-weight:700; background:${segCor[e] || segCor['sem validade']}">${escHtml(e)}</span>`;
+    function segMsg(t, c) { const el = document.getElementById('segMsg'); el.style.color = c || '#94a3b8'; el.textContent = t; }
+
+    async function carregarSeguranca() {
+      try {
+        const [p, r] = await Promise.all([rastroApi('painel_seguranca'), rastroApi('listar_registros_sst')]);
+        document.getElementById('segExigir').checked = p.exigir_treinamento;
+        const k = (n, t, c) => `<div class="meta-stat"><span class="meta-stat-label">${t}</span><span class="meta-stat-val" style="color:${c};">${n}</span></div>`;
+        document.getElementById('segKpis').innerHTML = k(p.vencidos.length, 'Vencidos', p.vencidos.length ? '#f87171' : '#4ade80') + k(p.a_vencer.length, 'A vencer em 30 dias', p.a_vencer.length ? '#fbbf24' : '#4ade80')
+          + k(p.acidentes_12_meses, 'Acidentes em 12 meses', '#e2e8f0') + k(p.com_cat, 'Com CAT', '#e2e8f0') + k(p.dias_afastados_12_meses, 'Dias afastados', '#e2e8f0');
+        const cols = Object.values(p.exigencias).filter((v, i, a) => a.indexOf(v) === i).sort();
+        document.getElementById('segMatriz').innerHTML = p.matriz.length ? `<table class="rg-tabela"><thead><tr><th>Pessoa</th>${cols.map(c => `<th>${escHtml(c)}</th>`).join('')}</tr></thead><tbody>${p.matriz.map(m => `<tr><td>${escHtml(m.pessoa)}</td>${cols.map(c => `<td>${m[c] === 'ok' ? '✅ em dia' : '⚠️ pendente'}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '<span style="font-size:12px; color:#64748b;">Nenhuma pessoa com registro.</span>';
+        const venc = [...p.vencidos.map(v => ({...v, estado: 'vencido'})), ...p.a_vencer.map(v => ({...v, estado: 'a vencer'}))];
+        document.getElementById('segVencimentos').innerHTML = venc.length ? venc.map(v => `<div style="font-size:12px; margin-bottom:4px;">${segBadge(v.estado)} <b>${escHtml(v.pessoa)}</b>: ${escHtml(v.tipo)} ${escHtml(v.documento)} (validade ${escHtml(v.validade)})</div>`).join('') : '<span style="font-size:12px; color:#4ade80;">Nada vencido nem perto de vencer.</span>';
+        document.getElementById('segRegistros').innerHTML = r.registros.map(x => `<tr><td>${escHtml(x.tipo)}</td><td>${escHtml(x.pessoa)}</td><td>${escHtml(x.documento || '')}${x.tipo === 'Acidente' ? ` ${x.cat ? '(CAT) ' : ''}${x.dias_afastamento ? x.dias_afastamento + ' dia(s) afastado' : ''} ${escHtml(x.observacoes || '')}` : ''}</td><td>${escHtml(x.data_emissao)}</td><td>${escHtml(x.validade || '-')}</td><td>${x.validade ? segBadge(x.estado) : '-'}</td></tr>`).join('') || '<tr><td colspan="6" style="color:#64748b;">Nenhum registro.</td></tr>';
+      } catch (e) { segMsg(e.message, '#ef4444'); }
+    }
+
+    async function segExigir(v) {
+      try { await rastroApi('config_seguranca', {exigir_treinamento: v ? 1 : 0}); segMsg(v ? 'O operador por rosto só avança a etapa com o treinamento em dia.' : 'A exigência de treinamento foi desligada.', '#4ade80'); }
+      catch (e) { segMsg(e.message, '#ef4444'); document.getElementById('segExigir').checked = !v; }
+    }
+
+    async function segRegistrar() {
+      try {
+        await rastroApi('registrar_sst', {tipo: document.getElementById('segTipo').value, pessoa: document.getElementById('segPessoa').value, documento: document.getElementById('segDocumento').value, funcao: document.getElementById('segFuncao').value,
+          data_emissao: document.getElementById('segEmissao').value || null, validade: document.getElementById('segValidade').value || null, observacoes: document.getElementById('segObs').value, cat: document.getElementById('segCat').checked ? 1 : 0, dias_afastamento: document.getElementById('segDias').value || null});
+        ['segDocumento', 'segObs', 'segValidade', 'segEmissao', 'segDias'].forEach(id => { document.getElementById(id).value = ''; });
+        segMsg('Registro salvo.', '#4ade80'); carregarSeguranca();
+      } catch (e) { segMsg(e.message, '#ef4444'); }
+    }
+
+    // ---------------- Manutenção da frota e dos equipamentos ----------------
+    function atMsg(t, c) { const el = document.getElementById('atMsg'); el.style.color = c || '#94a3b8'; el.textContent = t; }
+
+    async function carregarManutencao() {
+      try {
+        const d = await rastroApi('listar_ativos_operacionais');
+        const cor = {vencida: '#7f1d1d; color:#f87171', 'próxima': '#713f12; color:#fbbf24', 'em dia': '#14532d; color:#4ade80', 'sem intervalo': '#334155; color:#cbd5e1'};
+        document.getElementById('atLista').innerHTML = d.ativos.map(a => `<tr><td><b>${escHtml(a.nome)}</b></td><td>${escHtml(a.tipo)}</td>
+          <td>${a.leitura_atual} ${a.unidade_medida === 'Km' ? 'km' : 'h'} <input type="number" class="filter-input" style="width:90px;" placeholder="nova" onchange="atLeitura('${escHtml(a.nome)}', this.value)"></td>
+          <td><span style="padding:1px 8px; border-radius:4px; font-size:11px; font-weight:700; background:${cor[a.manutencao]}">${escHtml(a.manutencao)}</span>${a.faltam === null ? '' : ` <span style="font-size:11px; color:#94a3b8;">${a.faltam >= 0 ? 'faltam ' + a.faltam : 'passou ' + (-a.faltam)}</span>`}</td>
+          <td>${a.vencimento_documento ? `${segBadge(a.documento)} ${escHtml(a.vencimento_documento)}` : '-'}</td><td>R$ ${Number(a.custo_12_meses).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+          <td><button class="btn-prancha" onclick="mtHistorico('${escHtml(a.nome)}')">Histórico</button> <button class="btn-prancha" onclick="atExcluir('${escHtml(a.nome)}')">Excluir</button></td></tr>`).join('') || '<tr><td colspan="7" style="color:#64748b;">Nenhum equipamento cadastrado.</td></tr>';
+        document.getElementById('mtAtivo').innerHTML = d.ativos.map(a => `<option value="${escHtml(a.nome)}">${escHtml(a.nome)}</option>`).join('');
+      } catch (e) { atMsg(e.message, '#ef4444'); }
+    }
+
+    async function atSalvar() {
+      try {
+        await rastroApi('salvar_ativo_operacional', {nome: document.getElementById('atNome').value, tipo: document.getElementById('atTipo').value, unidade_medida: document.getElementById('atMedida').value, leitura_atual: document.getElementById('atLeitura').value || 0,
+          intervalo_manutencao: document.getElementById('atIntervalo').value || null, vencimento_documento: document.getElementById('atDoc').value || null});
+        atMsg('Equipamento salvo.', '#4ade80'); carregarManutencao();
+      } catch (e) { atMsg(e.message, '#ef4444'); }
+    }
+
+    async function atLeitura(nome, v) { try { await rastroApi('atualizar_leitura_ativo', {ativo: nome, leitura: v}); carregarManutencao(); } catch (e) { atMsg(e.message, '#ef4444'); carregarManutencao(); } }
+    async function atExcluir(nome) { if (!confirm(`Excluir ${nome} e o histórico de manutenção dele?`)) return; try { await rastroApi('excluir_ativo_operacional', {nome}); carregarManutencao(); } catch (e) { atMsg(e.message, '#ef4444'); } }
+
+    async function mtRegistrar() {
+      try {
+        const ativo = document.getElementById('mtAtivo').value;
+        await rastroApi('registrar_manutencao_ativo', {ativo, tipo: document.getElementById('mtTipo').value, leitura: document.getElementById('mtLeitura').value || null, custo: document.getElementById('mtCusto').value || null, descricao: document.getElementById('mtDescricao').value});
+        ['mtLeitura', 'mtCusto', 'mtDescricao'].forEach(id => { document.getElementById(id).value = ''; });
+        atMsg('Manutenção registrada.', '#4ade80'); await carregarManutencao(); mtHistorico(ativo);
+      } catch (e) { atMsg(e.message, '#ef4444'); }
+    }
+
+    async function mtHistorico(nome) {
+      try {
+        const d = await rastroApi('historico_manutencao_ativo', {ativo: nome});
+        document.getElementById('mtHistorico').innerHTML = `<div class="rg-bloco-titulo">Histórico · ${escHtml(nome)}</div>` + (d.historico.length ? `<table class="rg-tabela"><thead><tr><th>Data</th><th>Tipo</th><th>Leitura</th><th>Custo</th><th>O que foi feito</th><th>Quem</th></tr></thead><tbody>${d.historico.map(m => `<tr><td>${escHtml(m.data)}</td><td>${escHtml(m.tipo)}</td><td>${m.leitura}</td><td>R$ ${Number(m.custo || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td><td>${escHtml(m.descricao || '')}</td><td>${escHtml(m.responsavel || '')}</td></tr>`).join('')}</tbody></table>` : '<span style="font-size:12px; color:#64748b;">Nenhuma manutenção registrada.</span>');
+      } catch (e) { atMsg(e.message, '#ef4444'); }
+    }
+
+    // ---------------- LGPD: direitos do titular ----------------
+    async function lgpdExportar(usuario) {
+      const d = await _postJson('lgpd_exportar_titular', {usuario});
+      if (!d.success) { alert(d.error); return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], {type: 'application/json'}));
+      a.download = `dados-do-titular-${usuario.split('@')[0]}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    async function lgpdExcluir(usuario, nome) {
+      if (!confirm(`Excluir os dados de ${nome}? O rosto é apagado, o consentimento é retirado e o nome sai das etapas de produção. Isso não pode ser desfeito.`)) return;
+      const d = await _postJson('lgpd_excluir_titular', {usuario});
+      alert(d.success ? `Dados excluídos. ${d.etapas_anonimizadas} etapa(s) de produção ficaram sem o nome da pessoa.` : d.error);
+      carregarRostos();
     }
   </script>
 </body>

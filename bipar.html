@@ -136,6 +136,13 @@
         <input id="rostoNome" type="text" autocomplete="name" placeholder="Seu nome" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--bg2); color:#fff; font-size:16px; margin:4px 0 12px;">
         <label style="font-size:12px; color:var(--text-dim);">SETOR</label>
         <select id="rostoSetor" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--bg2); color:#fff; font-size:16px; margin:4px 0 14px;"></select>
+        <details id="rostoTermo" style="margin:0 0 10px; font-size:12px; color:var(--text-dim);">
+          <summary style="cursor:pointer;">Termo de consentimento do rosto (LGPD)</summary>
+          <div id="rostoTermoTexto" style="white-space:pre-wrap; margin-top:8px; line-height:1.5; max-height:240px; overflow:auto;">Carregando o termo...</div>
+        </details>
+        <label style="display:flex; gap:8px; align-items:flex-start; font-size:12px; color:var(--text-dim); margin:0 0 12px; cursor:pointer;">
+          <input type="checkbox" id="rostoConsentimento" style="margin-top:2px;"> Li e aceito o termo. Só é pedido no primeiro cadastro.
+        </label>
         <button id="rostoIniciar" class="action-btn action-avancar" onclick="iniciarEntradaPorRosto()">📷 Verificar o rosto e entrar</button>
         <label id="rostoFotoBtn" class="action-btn action-avancar" style="display:none; text-align:center; cursor:pointer; margin-top:8px;">
           <span id="rostoFotoTexto">📷 Tirar a foto</span>
@@ -665,10 +672,13 @@
         carga = { descritor: q.descritor };
       }
       msgRosto('Conferindo...');
-      const resp = await fetch(`${API_BASE}/api/method/frappe.precast_api.rosto_entrar`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...carga, nome, setor }) });
+      const resp = await fetch(`${API_BASE}/api/method/frappe.precast_api.rosto_entrar`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...carga, nome, setor, consentimento: document.getElementById('rostoConsentimento').checked ? 1 : 0 }) });
       const r = (await resp.json()).message || { success: false, error: 'O servidor não respondeu. Tente de novo.' };
       if (r.success) { msgRosto(r.primeiro_acesso ? `Cadastro feito, ${r.nome}. Entrando...` : `Olá, ${r.nome}! Entrando...`, '#22c55e'); setTimeout(() => window.location.reload(), 700); }
-      else msgRosto(r.error || 'Não foi possível entrar.', '#ef4444');
+      else {
+        if (r.precisa_consentimento) document.getElementById('rostoTermo').open = true;
+        msgRosto(r.error || 'Não foi possível entrar.', '#ef4444');
+      }
     } catch (e) { msgRosto(e.message, '#ef4444'); }
     finally { botao.disabled = false; document.getElementById('rostoFotoBtn').style.display = 'none'; }
   }
@@ -679,6 +689,10 @@
       const j = await (await fetch(`${API_BASE}/api/method/frappe.precast_api.rosto_config`)).json();
       const m = j.message || {};
       document.getElementById('rostoSetor').innerHTML = (m.setores || []).map(x => `<option>${x}</option>`).join('');
+      try {
+        const t = (await (await fetch(`${API_BASE}/api/method/frappe.precast_api.termo_lgpd`)).json()).message || {};
+        document.getElementById('rostoTermoTexto').textContent = t.texto || 'Termo indisponível. Procure o responsável.';
+      } catch (e) { document.getElementById('rostoTermoTexto').textContent = 'Termo indisponível. Procure o responsável.'; }
       if (m.cadastro_aberto === false) msgRosto('Novos cadastros pelo operador estão fechados: só quem já foi cadastrado entra.', '#eab308');
     } catch (e) { /* segue sem a lista */ }
   }

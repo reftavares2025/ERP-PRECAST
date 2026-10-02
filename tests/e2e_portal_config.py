@@ -37,7 +37,7 @@ url = api("get_link_portal", codigo_obra=OBRA)["url"]
 d = publico(url)
 ok("sem configuração, o cliente vê tudo", d.get("success") and d["pecas"] is not None and d["peso_t"] is not None and d["entregas"] is not None)
 cfg = api("get_config_portal", codigo_obra=OBRA)
-ok("config lista as 10 seções", len(cfg["secoes"]) == 10 and all(cfg["config"]["secoes"].values()))
+ok("config lista as 11 seções; sem configuração o cliente vê tudo, menos o dossiê da peça (só abre quando o dono liga)", len(cfg["secoes"]) == 11 and cfg["config"]["secoes"]["dossie"] is False and all(v for k, v in cfg["config"]["secoes"].items() if k != "dossie"))
 r = api("salvar_config_portal", codigo_obra=OBRA, ativo=True, mensagem="Bem-vindo", secoes=json.dumps({"pecas": False, "pesos": False, "entregas": False, "diario": False, "fotos": False}))
 d = publico(url)
 ok("peças desligadas não saem do servidor", d["pecas"] is None)

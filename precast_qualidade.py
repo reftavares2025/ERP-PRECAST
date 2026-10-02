@@ -336,3 +336,27 @@ def resumo():
     """Tudo o que a aba Qualidade precisa numa chamada."""
     return {"success": True, "lotes": listar_lotes(), "certificados": listar_certificados(),
             "exigir_rg_expedicao": exigir_rg_para_expedir()}
+
+
+def rg_publico(codigo_peca):
+    """O RG que o cliente vê no portal: sem nomes de pessoas, sem notas fiscais e sem o texto interno das não conformidades."""
+    rg = rg_da_peca(codigo_peca)
+    if not rg.get("success"):
+        return rg
+    p = rg["peca"]
+    conferencias = []
+    for c in rg["conferencias"]:
+        if c["item"] == "Não conformidades":
+            c = {**c, "detalhe": "Nenhuma pendência" if c["estado"] == "ok" else "Em tratamento pela empresa"}
+        conferencias.append(c)
+    lote = rg["lote"]
+    return {"success": True,
+            "peca": {"tag": p["tag"], "produto": p["produto"], "secao": p["secao"], "comprimento_m": p["comprimento_m"], "peso_kg": p["peso_kg"], "fck": p["fck"], "fase": p["fase"]},
+            "conferencias": conferencias, "completo": rg["completo"],
+            "lote": {"codigo": lote["codigo"], "data_concretagem": lote["data_concretagem"], "fck_especificado": lote["fck_especificado"], "status": rg["status_do_lote"],
+                     "corpos_de_prova": [{"idade_dias": c["idade_dias"], "fck_obtido": c["fck_obtido"], "resultado": c["resultado"], "data_ruptura": c["data_ruptura"]} for c in lote["corpos_de_prova"]]} if lote else None,
+            "certificados": [{"corrida": c["corrida"], "bitola_mm": c["bitola_mm"], "fabricante": c["fabricante"], "norma": c["norma"], "data_recebimento": c["data_recebimento"]} for c in rg["certificados"]],
+            "fases": [{"fase": f["fase"], "data_hora": f["data_hora"]} for f in rg["fases"]],
+            "inspecoes": [{"etapa": i["etapa"], "aprovado": i["aprovado"], "data_inspecao": i["data_inspecao"]} for i in rg["inspecoes"]],
+            "entrega": {"romaneio": rg["romaneio"]["codigo"], "data_expedicao": rg["romaneio"]["data_expedicao"], "status": rg["romaneio"]["status"]} if rg["romaneio"] else None,
+            "emitido_em": rg["emitido_em"]}

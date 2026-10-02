@@ -15,7 +15,7 @@ DIR="$(cd "$(dirname "$0")/.." && { pwd -W 2>/dev/null || pwd; })"
 BENCH=/home/frappe/frappe-bench
 
 echo "== 1/6: API e provisionamento =="
-for f in precast_api.py provision_schema.py provision_finalize.py precast_traducoes.py precast_suporte.py precast_fiscal.py precast_padrao_cad.py precast_traducoes_auto.py precast_traducoes_geradas.json precast_rosto.py precast_qualidade.py precast_revisoes.py precast_corte.py precast_patio.py; do
+for f in precast_api.py provision_schema.py provision_finalize.py precast_traducoes.py precast_suporte.py precast_fiscal.py precast_padrao_cad.py precast_traducoes_auto.py precast_traducoes_geradas.json precast_rosto.py precast_qualidade.py precast_revisoes.py precast_corte.py precast_patio.py precast_montagem.py precast_compras.py precast_sst.py; do
   docker cp "$DIR/$f" "$BACKEND:$BENCH/apps/frappe/frappe/$f"
 done
 

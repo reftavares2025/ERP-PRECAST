@@ -1251,6 +1251,140 @@ PLANO_CORTE = {
     "permissions": _PERMISSOES_BASE,
 }
 
+EQUIPAMENTO_ICAMENTO = {
+    "module": "Custom", "naming_rule": "By fieldname", "autoname": "field:nome", "issingle": 0,
+    "fields": [
+        {"fieldname": "nome", "label": "Equipamento", "fieldtype": "Data", "reqd": 1, "unique": 1, "in_list_view": 1},
+        {"fieldname": "tipo", "label": "Tipo", "fieldtype": "Data", "in_list_view": 1},
+        {"fieldname": "capacidade_max_kg", "label": "Capacidade máxima (kg)", "fieldtype": "Float", "reqd": 1},
+        {"fieldname": "fator_seguranca", "label": "Fator de segurança", "fieldtype": "Float", "default": "1.25"},
+        {"fieldname": "tabela_carga", "label": "Tabela de carga (JSON)", "fieldtype": "Long Text"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
+CAMPOS_LOGISTICA = [
+    ("Peca Pre-Moldada", {"fieldname": "sequencia_montagem", "label": "Sequência de montagem", "fieldtype": "Int"}, "aviso_engenharia"),
+    ("Peca Pre-Moldada", {"fieldname": "data_montagem_prevista", "label": "Montagem prevista", "fieldtype": "Date"}, "aviso_engenharia"),
+    ("Caminhao", {"fieldname": "comprimento_m", "label": "Comprimento da carroceria (m)", "fieldtype": "Float"}, "capacidade_kg"),
+    ("Romaneio", {"fieldname": "ordem_carga", "label": "Ordem de carregamento (JSON)", "fieldtype": "Long Text"}, "peso_total_kg"),
+    ("Certificado Aco", {"fieldname": "quantidade_kg", "label": "Quantidade recebida (kg)", "fieldtype": "Float"}, "nota_fiscal"),
+    ("Certificado Aco", {"fieldname": "saldo_kg", "label": "Saldo em estoque (kg)", "fieldtype": "Float"}, "quantidade_kg"),
+]
+
+
+def garantir_campos_logistica():
+    """Ordem de montagem, comprimento da carroceria e ordem de carregamento. Idempotente."""
+    from frappe.custom.doctype.custom_field.custom_field import create_custom_field
+    for doctype, campo, depois in CAMPOS_LOGISTICA:
+        if not frappe.db.exists("Custom Field", {"dt": doctype, "fieldname": campo["fieldname"]}) and                 not frappe.get_meta(doctype).has_field(campo["fieldname"]):
+            create_custom_field(doctype, {**campo, "insert_after": depois})
+
+
+PEDIDO_COMPRA = {
+    "module": "Custom", "naming_rule": "Autoincrement", "autoname": None, "issingle": 0,
+    "fields": [
+        {"fieldname": "obra", "label": "Obra", "fieldtype": "Data", "in_list_view": 1},
+        {"fieldname": "fornecedor", "label": "Fornecedor", "fieldtype": "Data", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "item", "label": "Item", "fieldtype": "Data", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "categoria", "label": "Categoria", "fieldtype": "Select", "options": "Aço\nCimento\nAgregado\nOutros"},
+        {"fieldname": "bitola_mm", "label": "Bitola (mm)", "fieldtype": "Float"},
+        {"fieldname": "quantidade", "label": "Quantidade", "fieldtype": "Float", "reqd": 1},
+        {"fieldname": "unidade", "label": "Unidade", "fieldtype": "Data"},
+        {"fieldname": "preco_unitario", "label": "Preço unitário", "fieldtype": "Float"},
+        {"fieldname": "valor_total", "label": "Valor total", "fieldtype": "Float", "in_list_view": 1},
+        {"fieldname": "status", "label": "Situação", "fieldtype": "Select", "options": "Solicitado\nAprovado\nRecebido\nCancelado", "default": "Solicitado", "in_list_view": 1},
+        {"fieldname": "solicitante", "label": "Solicitante", "fieldtype": "Data"},
+        {"fieldname": "aprovador", "label": "Aprovador", "fieldtype": "Data"},
+        {"fieldname": "data_solicitacao", "label": "Solicitado em", "fieldtype": "Datetime"},
+        {"fieldname": "data_aprovacao", "label": "Aprovado em", "fieldtype": "Datetime"},
+        {"fieldname": "data_recebimento", "label": "Recebido em", "fieldtype": "Datetime"},
+        {"fieldname": "prazo_dias", "label": "Prazo de entrega (dias)", "fieldtype": "Int"},
+        {"fieldname": "vencimento", "label": "Vencimento do pagamento", "fieldtype": "Date"},
+        {"fieldname": "corrida", "label": "Corrida do aço", "fieldtype": "Data"},
+        {"fieldname": "nota_fiscal", "label": "Nota fiscal", "fieldtype": "Data"},
+        {"fieldname": "observacoes", "label": "Observações", "fieldtype": "Small Text"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
+TITULO_PAGAR = {
+    "module": "Custom", "naming_rule": "Autoincrement", "autoname": None, "issingle": 0,
+    "fields": [
+        {"fieldname": "pedido", "label": "Pedido de compra", "fieldtype": "Data", "in_list_view": 1},
+        {"fieldname": "fornecedor", "label": "Fornecedor", "fieldtype": "Data", "in_list_view": 1},
+        {"fieldname": "obra", "label": "Obra", "fieldtype": "Data"},
+        {"fieldname": "valor", "label": "Valor", "fieldtype": "Float", "in_list_view": 1},
+        {"fieldname": "vencimento", "label": "Vencimento", "fieldtype": "Date", "in_list_view": 1},
+        {"fieldname": "status", "label": "Situação", "fieldtype": "Select", "options": "Aberto\nPago", "default": "Aberto", "in_list_view": 1},
+        {"fieldname": "pago_em", "label": "Pago em", "fieldtype": "Date"},
+        {"fieldname": "nota_fiscal", "label": "Nota fiscal", "fieldtype": "Data"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
+REGISTRO_SST = {
+    "module": "Custom", "naming_rule": "Autoincrement", "autoname": None, "issingle": 0,
+    "fields": [
+        {"fieldname": "tipo", "label": "Tipo", "fieldtype": "Select", "options": "Treinamento\nASO\nEPI\nAcidente\nInspeção", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "pessoa", "label": "Pessoa", "fieldtype": "Data", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "funcao", "label": "Função", "fieldtype": "Data"},
+        {"fieldname": "documento", "label": "Treinamento / exame / EPI", "fieldtype": "Data", "in_list_view": 1},
+        {"fieldname": "data_emissao", "label": "Data", "fieldtype": "Date", "in_list_view": 1},
+        {"fieldname": "validade", "label": "Validade", "fieldtype": "Date", "in_list_view": 1},
+        {"fieldname": "obra", "label": "Obra", "fieldtype": "Data"},
+        {"fieldname": "cat", "label": "CAT emitida", "fieldtype": "Check", "default": "0"},
+        {"fieldname": "dias_afastamento", "label": "Dias de afastamento", "fieldtype": "Int"},
+        {"fieldname": "observacoes", "label": "Observações", "fieldtype": "Small Text"},
+        {"fieldname": "registrado_por", "label": "Registrado por", "fieldtype": "Data"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
+ATIVO_OPERACIONAL = {
+    "module": "Custom", "naming_rule": "By fieldname", "autoname": "field:nome", "issingle": 0,
+    "fields": [
+        {"fieldname": "nome", "label": "Equipamento", "fieldtype": "Data", "reqd": 1, "unique": 1, "in_list_view": 1},
+        {"fieldname": "tipo", "label": "Tipo", "fieldtype": "Select", "options": "Caminhão\nGuindaste\nPonte rolante\nEmpilhadeira\nEquipamento", "in_list_view": 1},
+        {"fieldname": "identificacao", "label": "Placa ou número de série", "fieldtype": "Data"},
+        {"fieldname": "unidade_medida", "label": "Medida", "fieldtype": "Select", "options": "Horas\nKm", "default": "Horas"},
+        {"fieldname": "leitura_atual", "label": "Leitura atual", "fieldtype": "Float"},
+        {"fieldname": "intervalo_manutencao", "label": "Intervalo de manutenção", "fieldtype": "Float"},
+        {"fieldname": "leitura_ultima_manutencao", "label": "Leitura da última manutenção", "fieldtype": "Float"},
+        {"fieldname": "vencimento_documento", "label": "Vencimento do documento", "fieldtype": "Date"},
+        {"fieldname": "status", "label": "Situação", "fieldtype": "Select", "options": "Operando\nManutenção\nParado", "default": "Operando"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
+MANUTENCAO_ATIVO = {
+    "module": "Custom", "naming_rule": "Autoincrement", "autoname": None, "issingle": 0,
+    "fields": [
+        {"fieldname": "ativo", "label": "Equipamento", "fieldtype": "Data", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "tipo", "label": "Tipo", "fieldtype": "Select", "options": "Preventiva\nCorretiva", "in_list_view": 1},
+        {"fieldname": "data", "label": "Data", "fieldtype": "Date", "in_list_view": 1},
+        {"fieldname": "leitura", "label": "Leitura", "fieldtype": "Float"},
+        {"fieldname": "custo", "label": "Custo", "fieldtype": "Float"},
+        {"fieldname": "descricao", "label": "O que foi feito", "fieldtype": "Small Text"},
+        {"fieldname": "responsavel", "label": "Responsável", "fieldtype": "Data"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
+CONSENTIMENTO_DADOS = {
+    "module": "Custom", "naming_rule": "Autoincrement", "autoname": None, "issingle": 0,
+    "fields": [
+        {"fieldname": "titular", "label": "Titular (usuário)", "fieldtype": "Data", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "nome", "label": "Nome", "fieldtype": "Data", "in_list_view": 1},
+        {"fieldname": "finalidade", "label": "Finalidade", "fieldtype": "Small Text"},
+        {"fieldname": "versao", "label": "Versão do termo", "fieldtype": "Data"},
+        {"fieldname": "data_hora", "label": "Data e hora", "fieldtype": "Datetime", "in_list_view": 1},
+        {"fieldname": "origem", "label": "Origem", "fieldtype": "Data"},
+        {"fieldname": "revogado_em", "label": "Retirado em", "fieldtype": "Datetime"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
 # Rastreabilidade de cada peça: de qual lote de concreto e de quais corridas de aço ela saiu.
 CAMPOS_PECA_RASTRO = [
     {"fieldname": "lote_concreto", "label": "Lote do concreto", "fieldtype": "Link", "options": "Lote Concreto"},
@@ -1305,7 +1439,15 @@ def garantir_doctypes_novos():
     _criar_doctype("Certificado Aco", CERTIFICADO_ACO)
     _criar_doctype("Revisao Projeto", REVISAO_PROJETO)
     _criar_doctype("Plano Corte", PLANO_CORTE)
+    _criar_doctype("Equipamento Icamento", EQUIPAMENTO_ICAMENTO)
+    _criar_doctype("Pedido Compra", PEDIDO_COMPRA)
+    _criar_doctype("Titulo Pagar", TITULO_PAGAR)
+    _criar_doctype("Registro SST", REGISTRO_SST)
+    _criar_doctype("Ativo Operacional", ATIVO_OPERACIONAL)
+    _criar_doctype("Manutencao Ativo", MANUTENCAO_ATIVO)
+    _criar_doctype("Consentimento Dados", CONSENTIMENTO_DADOS)
     garantir_campos_peca()
     garantir_campos_forma()
+    garantir_campos_logistica()
     frappe.db.commit()
     frappe.clear_cache()
