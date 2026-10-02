@@ -222,8 +222,18 @@ def mudar_status(nome_plano, status):
     frappe.db.set_value("Plano Corte", nome_plano, "status", status)
     if status == "Cancelado":
         _liberar_pecas(nome_plano, json.loads(frappe.db.get_value("Plano Corte", nome_plano, "pecas") or "[]"))
+    faltou = {}
+    if status == "Concluído":
+        # o aço cortado sai do estoque, das corridas mais antigas para as mais novas
+        from frappe.precast_compras import consumir_aco
+        resultado = json.loads(frappe.db.get_value("Plano Corte", nome_plano, "resultado") or "{}")
+        faltou = consumir_aco({b["bitola_mm"]: b["aco_comprado_kg"] for b in resultado.get("por_bitola", [])})
     frappe.db.commit()
-    return {"success": True, "status": status}
+    resposta = {"success": True, "status": status}
+    if faltou:
+        resposta["saldo_insuficiente"] = faltou
+        resposta["aviso"] = "O estoque de aço cadastrado não cobre o plano: " + ", ".join(f"Ø {b} mm faltou {kg} kg" for b, kg in faltou.items()) + ". Confira os recebimentos."
+    return resposta
 
 
 def listar(obra):
