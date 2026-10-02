@@ -1278,6 +1278,19 @@ def garantir_campos_peca():
             create_custom_field("Peca Pre-Moldada", {**campo, "insert_after": "aviso_engenharia"})
 
 
+CAMPOS_FORMA = [
+    {"fieldname": "ciclo_dias", "label": "Ciclo da forma (dias)", "fieldtype": "Float", "default": "1"},
+]
+
+
+def garantir_campos_forma():
+    """Ciclo de cura da forma: a peça ocupa a forma por esse número de dias. Idempotente."""
+    from frappe.custom.doctype.custom_field.custom_field import create_custom_field
+    for campo in CAMPOS_FORMA:
+        if not frappe.db.exists("Custom Field", {"dt": "Forma Pista", "fieldname": campo["fieldname"]}) and                 not frappe.get_meta("Forma Pista").has_field(campo["fieldname"]):
+            create_custom_field("Forma Pista", {**campo, "insert_after": "giros_limite_manutencao"})
+
+
 def garantir_doctypes_novos():
     """Cria os documentos que surgiram depois do schema inicial. Idempotente; roda no publicar.sh
     e no provisionamento de cliente novo."""
@@ -1293,5 +1306,6 @@ def garantir_doctypes_novos():
     _criar_doctype("Revisao Projeto", REVISAO_PROJETO)
     _criar_doctype("Plano Corte", PLANO_CORTE)
     garantir_campos_peca()
+    garantir_campos_forma()
     frappe.db.commit()
     frappe.clear_cache()

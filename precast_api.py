@@ -575,13 +575,13 @@ def advance_piece_phase(codigo_peca, next_fase=None, forcar=False):
     # um corpo de prova aprovado com fck igual ou acima do exigido pela
     # peca. Sem isso, a desforma fica bloqueada mesmo sequencialmente certa.
     if new_fase >= 5 and curr_fase < 5 and not forcar:
-        aprovado_cp = _tem_corpo_de_prova_aprovado(codigo_peca, doc.fck)
+        from frappe.precast_patio import desforma_liberada
+        aprovado_cp, explicacao_cp = desforma_liberada(codigo_peca, doc.fck)
         if not aprovado_cp:
             return {
                 "success": False,
                 "bloqueado_fck": True,
-                "error": f"Desforma bloqueada: nenhum corpo de prova aprovado com fck >= {doc.fck or 'exigido'} "
-                         f"registrado pra esta peça. Registre a ruptura do CP antes de desformar."
+                "error": f"Desforma bloqueada: {explicacao_cp}."
             }
 
     if new_fase > curr_fase + 1 and forcar:
@@ -603,6 +603,10 @@ def advance_piece_phase(codigo_peca, next_fase=None, forcar=False):
         }).insert(ignore_permissions=True)
     except Exception as e:
         frappe.log_error(title="Falha ao gravar historico de fase", message=str(e))
+
+    if new_fase >= 5 and curr_fase < 5:
+        from frappe.precast_patio import peca_desmoldada
+        peca_desmoldada(codigo_peca)    # a forma ganha um giro e fica livre se esvaziou
 
     frappe.db.commit()
 
@@ -2492,7 +2496,7 @@ def delete_piece(codigo_peca):
 @endpoint()
 def get_formas_pistas():
     formas = frappe.get_all('Forma Pista', fields=[
-        'codigo', 'tipo', 'comprimento_m', 'largura_m', 'capacidade_kg', 'status'
+        'codigo', 'tipo', 'comprimento_m', 'largura_m', 'capacidade_kg', 'status', 'ciclo_dias', 'giros_realizados', 'giros_limite_manutencao'
     ], order_by='codigo asc')
 
     for f in formas:
@@ -2551,26 +2555,53 @@ def delete_forma_pista(codigo):
             "message": f"Forma/Pista {codigo} excluída ({len(pecas)} peças desalocadas)."}
 
 @endpoint()
-def program_piece(codigo_peca, forma_pista, data_programada):
+def program_piece(codigo_peca, forma_pista, data_programada, forcar=False):
+    """Programa a peça numa forma/pista numa data, conferindo manutenção, tamanho e ocupação (o ciclo de cura conta)."""
     _exigir_papel("Produção", "Direção")
-    if not frappe.db.exists('Peca Pre-Moldada', codigo_peca):
-        return {"success": False, "error": f"Peça {codigo_peca} não encontrada"}
-    if not frappe.db.exists('Forma Pista', forma_pista):
-        return {"success": False, "error": f"Forma/Pista {forma_pista} não encontrada"}
-
-    doc = frappe.get_doc('Peca Pre-Moldada', codigo_peca)
-    doc.forma_pista = forma_pista
-    doc.data_programada = data_programada
-    doc.save(ignore_permissions=True)
-
-    forma_doc = frappe.get_doc('Forma Pista', forma_pista)
-    if forma_doc.status == 'Livre':
-        forma_doc.status = 'Ocupada'
-        forma_doc.save(ignore_permissions=True)
-
+    from frappe.precast_patio import programar
+    r = programar(codigo_peca, forma_pista, data_programada, str(forcar).lower() in ("1", "true", "sim"))
+    if not r.get("success"):
+        return r
     frappe.db.commit()
     return {"success": True, "codigo_peca": codigo_peca, "forma_pista": forma_pista,
             "data_programada": data_programada, "message": "Peça programada com sucesso"}
+
+@endpoint()
+def config_patio(desforma_pct_fck=None, trabalha_sabado=None):
+    from frappe.precast_patio import configuracao
+    if desforma_pct_fck not in (None, "") or trabalha_sabado not in (None, ""):
+        _exigir_papel("Produção", "Qualidade", "Direção")
+    return configuracao(desforma_pct_fck, trabalha_sabado)
+
+
+@endpoint()
+def visao_patio(data_inicio=None, dias=14):
+    from frappe.precast_patio import visao
+    return visao(data_inicio, dias)
+
+
+@endpoint()
+def sugerir_programacao(obra=None, data_inicio=None, pecas=None):
+    _exigir_papel("Produção", "Direção")
+    from frappe.precast_patio import sugerir
+    return sugerir(obra, data_inicio, pecas)
+
+
+@endpoint()
+def aplicar_programacao(sugestoes):
+    _exigir_papel("Produção", "Direção")
+    if isinstance(sugestoes, str):
+        sugestoes = json.loads(sugestoes)
+    from frappe.precast_patio import aplicar_sugestoes
+    return aplicar_sugestoes(sugestoes)
+
+
+@endpoint()
+def configurar_forma_pista(codigo, ciclo_dias):
+    _exigir_papel("Produção", "Direção")
+    from frappe.precast_patio import configurar_forma
+    return configurar_forma(codigo, ciclo_dias)
+
 
 @endpoint()
 def unprogram_piece(codigo_peca):

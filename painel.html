@@ -1394,6 +1394,29 @@
       </div>
 
       <!-- ========================================== -->
+      <!-- VIEW: FABRICAÇÃO - PLANEJADOR DE PÁTIO     -->
+      <!-- ========================================== -->
+      <div id="viewPlanejadorPatio" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+        <div class="filter-panel" style="border-top: 2px solid var(--c-fabricacao); flex-wrap:wrap;">
+          <div class="filter-group"><span class="filter-label">Obra</span><select class="filter-select" id="patioObra"></select></div>
+          <div class="filter-group"><span class="filter-label">A partir de</span><input type="date" class="filter-input" id="patioInicio" style="width:150px;" onchange="carregarPatio()"></div>
+          <div class="filter-group"><span class="filter-label">Desforma com (% do fck)</span><input type="number" class="filter-input" id="patioDesforma" style="width:90px;" min="30" max="100"></div>
+          <label style="font-size:12px; display:flex; gap:6px; align-items:center; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="patioSabado"> Trabalha aos sábados</label>
+          <button class="filter-badge-btn" onclick="patioSalvarConfig()">Salvar</button>
+          <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981;" onclick="patioSugerir()">🔮 Sugerir programação</button>
+        </div>
+        <div style="padding:16px; display:grid; gap:16px;">
+          <div id="patioAlertas" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px;"></div>
+          <div id="patioSugestoes"></div>
+          <div class="rastro-card">
+            <div class="rastro-titulo">Ocupação das formas (cada forma segura a peça pelo tempo do seu ciclo de cura)</div>
+            <div style="overflow-x:auto;"><table class="rg-tabela" id="patioMapa"></table></div>
+            <div id="patioMsg" style="font-size:12px; margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
       <!-- VIEW: LOGÍSTICA - ROMANEIO DE CARGA        -->
       <!-- ========================================== -->
       <div id="viewRomaneio" class="hidden" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
@@ -2538,6 +2561,7 @@
         <div class="subtab" onclick="setSubtabFabricacao(this, 'planejamento')">🏭 Pistas & Formas</div>
         <div class="subtab" onclick="setSubtabFabricacao(this, 'armacao')">🔩 Estoque de Armação</div>
         <div class="subtab" onclick="setSubtabFabricacao(this, 'corte')">✂️ Plano de Corte</div>
+        <div class="subtab" onclick="setSubtabFabricacao(this, 'patio')">📊 Planejador de Pátio</div>
         <div class="subtab" onclick="abrirEtiquetasLote()">🏷️ Etiquetas ZPL</div>
       `;
     }
@@ -2585,6 +2609,10 @@
         document.getElementById('viewEstoqueArmacao').classList.remove('hidden');
         document.getElementById('screenTitle').innerText = 'Estoque de Armação — Corte & Dobra';
         loadEstoqueArmacao();
+      } else if (screen === 'patio') {
+        document.getElementById('viewPlanejadorPatio').classList.remove('hidden');
+        document.getElementById('screenTitle').innerText = 'Planejador de Pátio e Formas';
+        carregarPatio();
       } else if (screen === 'corte') {
         document.getElementById('viewPlanoCorte').classList.remove('hidden');
         document.getElementById('screenTitle').innerText = 'Plano de Corte e Dobra do Aço';
@@ -3292,6 +3320,7 @@
       document.getElementById('viewFiscal').classList.add('hidden');
       document.getElementById('viewQualidade').classList.add('hidden');
       document.getElementById('viewPlanoCorte').classList.add('hidden');
+      document.getElementById('viewPlanejadorPatio').classList.add('hidden');
     }
 
     function clearActiveTabs() {
@@ -3889,7 +3918,7 @@
       });
     }
 
-    async function submitProgramPiece() {
+    async function submitProgramPiece(forcarOcupacao) {
       const codigo_peca = document.getElementById('programPecaSelect').value;
       const forma_pista = document.getElementById('programFormaSelect').value;
       const data_programada = document.getElementById('programDataInput').value;
@@ -3902,9 +3931,10 @@
         const resp = await fetch(`${FRAPPE_API_BASE}/api/method/frappe.precast_api.program_piece`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({codigo_peca, forma_pista, data_programada})
+          body: JSON.stringify({codigo_peca, forma_pista, data_programada, forcar: forcarOcupacao ? 1 : 0})
         });
         const res = await resp.json();
+        if (res.message && res.message.conflito && !forcarOcupacao && confirm(res.message.error + '\n\nProgramar assim mesmo?')) return submitProgramPiece(true);
         if (res.message && res.message.success) {
           await fetchPiecesFromERP();
           await fetchFormasPistasFromERP();
@@ -5898,6 +5928,80 @@
       a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8'}));
       a.download = `plano-corte-${corteAtual.obra}-${corteAtual.numero}.csv`;
       document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    // ---------------- Planejador de pátio e formas ----------------
+    let patioSugestoesAtuais = [];
+
+    function patioMsg(t, c) { const el = document.getElementById('patioMsg'); if (el) { el.style.color = c || '#94a3b8'; el.textContent = t; } }
+    const patioData = iso => new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', {weekday: 'short', day: '2-digit', month: '2-digit'});
+
+    async function carregarPatio() {
+      if (!erpPieces.length) await fetchPiecesFromERP();
+      const obras = [...new Set((erpPieces || []).map(p => p.obra).filter(Boolean))].sort();
+      const sel = document.getElementById('patioObra'), atual = sel.value || 'ALL';
+      sel.innerHTML = '<option value="ALL">TODAS AS OBRAS</option>' + obras.map(o => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('');
+      sel.value = obras.includes(atual) ? atual : 'ALL';
+      const inicio = document.getElementById('patioInicio');
+      if (!inicio.value) inicio.value = new Date().toISOString().slice(0, 10);
+      try {
+        const [conf, v] = await Promise.all([rastroApi('config_patio'), rastroApi('visao_patio', {data_inicio: inicio.value, dias: 14})]);
+        document.getElementById('patioDesforma').value = conf.desforma_pct_fck;
+        document.getElementById('patioSabado').checked = !!conf.trabalha_sabado;
+        renderPatio(v);
+      } catch (e) { patioMsg(e.message, '#ef4444'); }
+    }
+
+    function renderPatio(v) {
+      const cor = pct => pct === 0 ? 'transparent' : pct > 100 ? '#7f1d1d' : pct >= 70 ? '#713f12' : '#14532d';
+      document.getElementById('patioMapa').innerHTML = `<thead><tr><th>Forma / pista</th><th>Ciclo</th><th>Giros</th>${v.datas.map(d => `<th style="text-align:center; font-size:11px;">${patioData(d)}</th>`).join('')}</tr></thead>
+        <tbody>${v.formas.map(f => `<tr>
+          <td><strong>${escHtml(f.codigo)}</strong><div style="font-size:11px; color:#64748b;">${escHtml(f.tipo || '')}${f.status === 'Manutenção' ? ' · <span style="color:#f87171;">em manutenção</span>' : ''}</div></td>
+          <td><input type="number" class="filter-input" style="width:64px;" step="0.5" min="0.5" max="14" value="${f.ciclo_dias}" onchange="patioSalvarCiclo('${escHtml(f.codigo)}', this.value)" title="Dias que a peça ocupa a forma (cura)"> d</td>
+          <td style="${f.giros >= f.giros_limite ? 'color:#f87171; font-weight:700;' : ''}">${f.giros}/${f.giros_limite}</td>
+          ${f.dias.map(d => `<td style="text-align:center; background:${cor(d.carga_pct)}; font-size:11px;" title="${escHtml(d.pecas.join(', '))}">${d.carga_pct ? d.carga_pct + '%' : ''}${d.pecas.length ? `<div style="color:#cbd5e1;">${escHtml(d.pecas.slice(0, 2).join(', '))}${d.pecas.length > 2 ? '…' : ''}</div>` : ''}</td>`).join('')}
+        </tr>`).join('') || '<tr><td colspan="20" style="color:#64748b; padding:16px;">Cadastre formas e pistas em "Pistas &amp; Formas".</td></tr>'}</tbody>`;
+      const cartao = (titulo, cor, linhas, vazio) => `<div class="rastro-card" style="border-color:${cor};"><div class="rastro-titulo" style="color:${cor};">${titulo}</div>${linhas.length ? linhas.map(l => `<div style="font-size:12px; margin-bottom:4px;">${l}</div>`).join('') : `<div style="font-size:12px; color:#64748b;">${vazio}</div>`}</div>`;
+      document.getElementById('patioAlertas').innerHTML =
+        cartao(`⏰ Atrasadas (${v.atrasadas.length})`, '#f87171', v.atrasadas.slice(0, 8).map(a => `<b>${escHtml(a.tag)}</b> (${escHtml(a.obra)}): programada em ${escHtml(a.data)} na ${escHtml(a.forma)}, ainda na fase ${a.fase}`), 'Nenhuma peça passou da data.')
+        + cartao(`🧱 Para desformar (${v.desformas.length})`, '#fbbf24', v.desformas.slice(0, 8).map(d => `<b>${escHtml(d.tag)}</b> · ${d.resistencia_liberada ? '✅ resistência liberada' : '⏳ ' + escHtml(d.resistencia)}${d.pronta_pelo_prazo ? ' · cura cumprida' : ''}`), 'Nenhuma peça concretada esperando.')
+        + cartao(`🗂️ Sem forma (${v.sem_forma})`, '#60a5fa', v.sem_forma ? [`${v.sem_forma} peça(s) em fabricação ainda sem forma programada. Use "Sugerir programação".`] : [], 'Tudo programado.')
+        + cartao(`🔧 Manutenção (${v.manutencao.length})`, '#f472b6', v.manutencao.map(escHtml), 'Nenhuma forma parada ou no limite de giros.');
+    }
+
+    async function patioSalvarConfig() {
+      try {
+        await rastroApi('config_patio', {desforma_pct_fck: document.getElementById('patioDesforma').value, trabalha_sabado: document.getElementById('patioSabado').checked ? 1 : 0});
+        patioMsg('Parâmetros salvos.', '#4ade80'); carregarPatio();
+      } catch (e) { patioMsg(e.message, '#ef4444'); }
+    }
+
+    async function patioSalvarCiclo(codigo, ciclo) {
+      try { await rastroApi('configurar_forma_pista', {codigo, ciclo_dias: ciclo}); patioMsg(`Ciclo da forma ${codigo}: ${ciclo} dia(s).`, '#4ade80'); }
+      catch (e) { patioMsg(e.message, '#ef4444'); carregarPatio(); }
+    }
+
+    async function patioSugerir() {
+      patioMsg('Calculando a programação...');
+      try {
+        const d = await rastroApi('sugerir_programacao', {obra: document.getElementById('patioObra').value, data_inicio: document.getElementById('patioInicio').value});
+        patioSugestoesAtuais = d.sugestoes;
+        document.getElementById('patioSugestoes').innerHTML = `<div class="rastro-card">
+          <div class="rastro-titulo">Programação sugerida (${d.sugestoes.length} peça(s))</div>
+          ${d.sugestoes.length ? `<table class="rg-tabela"><thead><tr><th>Peça</th><th>Obra</th><th>Forma / pista</th><th>Data</th></tr></thead><tbody>${d.sugestoes.map(s => `<tr><td>${escHtml(s.tag)}</td><td>${escHtml(s.obra)}</td><td>${escHtml(s.forma)}</td><td>${patioData(s.data)}</td></tr>`).join('')}</tbody></table>
+          <button class="filter-badge-btn" style="background:#10B981; border-color:#10B981; margin-top:10px;" onclick="patioAplicar()">✓ Aplicar programação</button>` : '<div style="font-size:12px; color:#64748b;">Nenhuma peça sem forma para programar.</div>'}
+          ${d.sem_lugar.length ? `<div class="rg-bloco-titulo">Não couberam</div>${d.sem_lugar.map(s => `<div style="font-size:12px; color:#fbbf24;">⚠️ <b>${escHtml(s.tag)}</b> (${escHtml(s.obra)}): ${escHtml(s.motivo)}</div>`).join('')}` : ''}</div>`;
+        patioMsg('');
+      } catch (e) { patioMsg(e.message, '#ef4444'); }
+    }
+
+    async function patioAplicar() {
+      try {
+        const d = await rastroApi('aplicar_programacao', {sugestoes: patioSugestoesAtuais});
+        document.getElementById('patioSugestoes').innerHTML = '';
+        patioMsg(`${d.programadas} peça(s) programada(s)` + (d.falhas.length ? `; ${d.falhas.length} não deu(ram) mais (alguém ocupou a forma): ${d.falhas.map(f => f.erro).join(' ')}` : '.'), d.falhas.length ? '#fbbf24' : '#4ade80');
+        await fetchPiecesFromERP(); carregarPatio();
+      } catch (e) { patioMsg(e.message, '#ef4444'); }
     }
   </script>
 </body>
