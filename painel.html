@@ -2099,9 +2099,20 @@
     </div>
   </div>
 
+  <!-- MODAL: HISTÓRICO DE REVISÕES -->
+  <div class="modal-backdrop" id="modalRevisoes">
+    <div class="modal-card" style="max-width:820px; width:96%; max-height:92vh; overflow:auto;">
+      <div class="modal-header">
+        <span class="modal-title" id="revisoesTitulo">Revisões do projeto</span>
+        <button class="filter-badge-btn" style="background:#475569; border-color:#475569;" onclick="document.getElementById('modalRevisoes').classList.remove('active')">Fechar</button>
+      </div>
+      <div id="revisoesCorpo" style="font-size:13px; color:#cbd5e1;"></div>
+    </div>
+  </div>
+
   <!-- MODAL: A OBRA JÁ TEM PEÇAS -->
   <div class="modal-backdrop" id="modalModoGravacao">
-    <div class="modal-card" style="max-width:520px;">
+    <div class="modal-card" style="max-width:720px; width:96%; max-height:92vh; overflow:auto;">
       <div class="modal-header"><span class="modal-title">Esta obra já tem peças</span></div>
       <div id="modoGravacaoTexto" style="font-size:13px; color:#cbd5e1; margin-bottom:12px;"></div>
       <div style="font-size:12px; color:#94a3b8; line-height:1.6;">
@@ -3593,10 +3604,33 @@
     // ERPNEXT INTEGRATION & SYNC
     // -------------------------------------------------------------
     // A obra já tem peças: mantém as que existem ou troca pelo desenho novo.
-    function perguntarModoDeGravacao(obra, existentes, novas) {
+    const NIVEL_REVISAO = {nenhum: ['#334155', '#cbd5e1', 'sem impacto'], atencao: ['#713f12', '#fbbf24', 'atenção'], critico: ['#7f1d1d', '#f87171', 'crítico']};
+
+    function htmlDiffRevisao(diff, nome) {
+      if (!diff || !diff.resumo) return '';
+      const r = diff.resumo;
+      const chip = (n, rotulo, cor) => `<span style="background:${cor}; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:700;">${n} ${rotulo}</span>`;
+      const alteradas = (diff.alteradas || []).map(a => {
+        const [fundo, texto, rotulo] = NIVEL_REVISAO[a.impacto.nivel] || NIVEL_REVISAO.nenhum;
+        return `<div style="border:1px solid #334155; border-radius:6px; padding:8px 10px; margin-bottom:6px;">
+          <div style="display:flex; justify-content:space-between; gap:8px;"><strong>${escHtml(a.tag)}</strong>
+            <span style="background:${fundo}; color:${texto}; padding:1px 8px; border-radius:4px; font-size:11px; font-weight:700;">${rotulo}${a.impacto.fase > 1 ? ' · fase ' + a.impacto.fase : ''}</span></div>
+          <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">${a.mudancas.map(m => `${escHtml(m.rotulo)}: ${escHtml(m.de)} → <b>${escHtml(m.para)}</b>`).join(' · ')}</div>
+          <div style="font-size:12px; color:#94a3b8; margin-top:3px;">${a.impacto.acoes.map(escHtml).join(' ')}</div></div>`;
+      }).join('');
+      return `<div style="margin:10px 0 4px; font-weight:700; color:#e2e8f0;">Revisão ${escHtml(nome || 'sem identificação')} comparada com o que a obra tem</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+          ${chip(r.novas, 'nova(s)', '#14532d')} ${chip(r.alteradas, 'alterada(s)', '#1e3a8a')} ${chip(r.iguais, 'igual(is)', '#334155')}
+          ${r.critico ? chip(r.critico, 'crítica(s)', '#7f1d1d') : ''} ${r.atencao ? chip(r.atencao, 'em atenção', '#713f12') : ''}
+        </div>
+        ${alteradas ? `<div style="max-height:34vh; overflow:auto;">${alteradas}</div>` : '<div style="font-size:12px; color:#94a3b8;">Nenhuma peça da obra mudou.</div>'}
+        ${r.ausentes ? `<div style="font-size:12px; color:#94a3b8; margin-top:8px;">${r.ausentes} peça(s) da obra não estão neste arquivo (${r.ausentes_com_producao} já têm produção).</div>` : ''}`;
+    }
+
+    function perguntarModoDeGravacao(obra, existentes, novas, diff) {
       return new Promise(resolve => {
         const m = document.getElementById('modalModoGravacao');
-        document.getElementById('modoGravacaoTexto').innerHTML = `A obra <b>${escHtml(obra)}</b> já tem <b>${existentes}</b> peças gravadas. Este arquivo traz <b>${novas}</b>.`;
+        document.getElementById('modoGravacaoTexto').innerHTML = `A obra <b>${escHtml(obra)}</b> já tem <b>${existentes}</b> peças gravadas. Este arquivo traz <b>${novas}</b>.` + htmlDiffRevisao(diff, currentParsedData && currentParsedData.obra && currentParsedData.obra.revisao);
         const fechar = valor => { m.classList.remove('active'); resolve(valor); };
         document.getElementById('modoAcrescentar').onclick = () => fechar('acrescentar');
         document.getElementById('modoSubstituir').onclick = () => fechar('substituir');
@@ -3618,7 +3652,9 @@
       const existentes = (erpPieces || []).filter(p => p.obra === obra.cod).length;
       let modo = 'acrescentar';
       if (existentes) {
-        modo = await perguntarModoDeGravacao(obra.cod, existentes, pieces.length);
+        let diff = null;
+        try { diff = await rastroApi('comparar_revisao', {obra_data: obra, pieces_data: pieces}); } catch (e) { console.warn('Comparação de revisão indisponível:', e); }
+        modo = await perguntarModoDeGravacao(obra.cod, existentes, pieces.length, diff);
         if (!modo) return;
       }
 
@@ -3631,6 +3667,7 @@
         const res = await resp.json();
         if (res.success) {
           alert(`Sucesso! Obra '${obra.cod}' e ${res.created || pieces.length} peças foram gravadas com sucesso no sistema!\nCada peça foi gravada exclusivamente com a sua prancha isolada.`);
+          if (res.revisao && (res.revisao.critico || res.revisao.atencao)) alert(`Revisão ${res.revisao.nome || res.revisao.numero} gravada. Peças que já andaram na fábrica mudaram: ${res.revisao.critico || 0} crítica(s) e ${res.revisao.atencao || 0} em atenção. O aviso ficou na peça e aparece para quem bipar.`);
           if ((res.pecas_removidas || []).length) alert(`Peças que não constam mais nas pranchas e ainda não tinham produção foram removidas: ${res.pecas_removidas.join(', ')}`);
           if ((res.pecas_fora_do_desenho || []).length) alert(`Atenção: estas peças já têm produção e não constam nas pranchas importadas (ficaram marcadas): ${res.pecas_fora_do_desenho.join(', ')}`);
           await fetchObrasFromERP();
@@ -4690,6 +4727,9 @@
               <button class="btn-prancha" onclick="viewObraPieces('${cod}')">
                 🧩 Ver Peças (${pecas})
               </button>
+              <button class="btn-prancha" onclick="abrirRevisoesObra('${cod}')" title="Histórico de revisões do projeto">
+                🕘 Revisões
+              </button>
               <button class="btn-prancha" style="background:#009688; border-color:#00bfa5;" onclick="gerarOrcamentoUI('${cod}')" title="Gerar Orçamento">
                 💼 Orçamento
               </button>
@@ -5670,6 +5710,33 @@
     function imprimirRgPeca() {
       if (!rgAtual) return;
       imprimirHtml(`RG ${rgAtual.peca.tag || rgAtual.peca.codigo_peca}`, `<h2>RG da peça ${escHtml(rgAtual.peca.tag || rgAtual.peca.codigo_peca)}</h2>` + htmlDoRg(rgAtual), CSS_RG);
+    }
+
+    // ---------------- Histórico de revisões do projeto ----------------
+    async function abrirRevisoesObra(cod) {
+      document.getElementById('revisoesTitulo').textContent = `Revisões do projeto · ${cod}`;
+      document.getElementById('revisoesCorpo').innerHTML = '<div style="padding:24px; text-align:center; color:#94a3b8;">Carregando...</div>';
+      document.getElementById('modalRevisoes').classList.add('active');
+      try {
+        const d = await rastroApi('listar_revisoes', {obra: cod});
+        document.getElementById('revisoesCorpo').innerHTML = d.revisoes.length ? d.revisoes.map(rv => {
+          const r = rv.resumo || {}, dif = rv.diff || {};
+          const quando = rv.data_hora ? new Date(String(rv.data_hora).replace(' ', 'T')).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) : '-';
+          return `<details style="border:1px solid #334155; border-radius:8px; padding:10px 12px; margin-bottom:8px;">
+            <summary style="cursor:pointer; display:flex; gap:10px; flex-wrap:wrap; align-items:baseline;">
+              <strong style="color:#3B82F6;">#${rv.numero} · ${escHtml(rv.revisao)}</strong>
+              <span style="color:#94a3b8;">${escHtml(quando)} · ${escHtml(rv.usuario || '')} · ${escHtml(rv.modo || '')}</span>
+              <span>${r.novas || 0} nova(s) · ${r.alteradas || 0} alterada(s)${r.critico ? ` · <b style="color:#f87171;">${r.critico} crítica(s)</b>` : ''}${r.atencao ? ` · <b style="color:#fbbf24;">${r.atencao} em atenção</b>` : ''}</span>
+            </summary>
+            <div style="font-size:12px; color:#94a3b8; margin:8px 0;">Arquivo: ${escHtml(rv.arquivo || '-')}</div>
+            ${htmlDiffRevisao({resumo: {novas: r.novas || 0, alteradas: r.alteradas || 0, iguais: r.iguais || 0, critico: r.critico || 0, atencao: r.atencao || 0, ausentes: 0, ausentes_com_producao: 0},
+                               alteradas: dif.alteradas || []}, rv.revisao)}
+            ${(dif.novas || []).length ? `<div style="font-size:12px; color:#94a3b8; margin-top:8px;">Novas: ${(dif.novas || []).map(n => escHtml(n.tag)).join(', ')}</div>` : ''}
+          </details>`;
+        }).join('') : '<div style="padding:24px; text-align:center; color:#64748b;">Esta obra ainda não tem revisões registradas.</div>';
+      } catch (e) {
+        document.getElementById('revisoesCorpo').innerHTML = `<div style="padding:24px; color:#f87171;">${escHtml(e.message)}</div>`;
+      }
     }
   </script>
 </body>

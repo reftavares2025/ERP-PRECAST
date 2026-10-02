@@ -9,9 +9,12 @@ from playwright.sync_api import sync_playwright
 URL = os.environ.get("RBR_URL", "http://localhost:8088")
 CAD = "http://localhost:2026"
 SENHA = [l.split("=", 1)[1].strip() for l in open(os.path.join(os.path.dirname(__file__), "..", "precast_service_credentials.env"), encoding="utf-8") if l.startswith("ADMIN_PASSWORD=")][0]
-DWG = os.environ.get("RBR_DWG_DETALHAMENTO") or (
-    r"R:\ENGENHARIA\DT_2026\RBR_DETAL_2026\109 - 26 - RODRIGO FEIJÃO - CEREALISTA OLIVEIRA - ITAPETININGA - SP\DETALHAMENTO"
-    r"\109 - 26 - RODRIGO FEIJÃO - ITAPETININGA - SP - R1- DETALHAMENTOS 17-09-26.dwg")
+_NOME_DWG = "109 - 26 - RODRIGO FEIJÃO - ITAPETININGA - SP - R1- DETALHAMENTOS 17-09-26.dwg"
+_NA_REDE = (r"R:\ENGENHARIA\DT_2026\RBR_DETAL_2026\109 - 26 - RODRIGO FEIJÃO - CEREALISTA OLIVEIRA - ITAPETININGA - SP\DETALHAMENTO"
+            "\\" + _NOME_DWG)
+_NO_UPLOADS = os.path.join(os.environ.get("PRECAST_UPLOADS_DIR") or r"D:\SISTEMA ERP PRÉ-FABRICADO\uploads_dwg", _NOME_DWG)
+# A planta fica na rede da engenharia; sem a rede, vale a cópia que já está na pasta de uploads do motor CAD.
+DWG = os.environ.get("RBR_DWG_DETALHAMENTO") or (_NA_REDE if os.path.exists(_NA_REDE) else _NO_UPLOADS)
 OBRA = "109 - 26"
 ESPERADAS = {"PM.01", "PM.02", "PM.03", *[f"PM.{n:02d}" for n in range(4, 15)], "VM-1.1", "VM-2.1", "VM-1.3", "VM-2.3", "VM-1.4", "VM-2.4",
              "VM-1.5", "VM-2.5", "VM-1.7", "VM-1.8"}
@@ -103,6 +106,9 @@ with sync_playwright() as pw:
     ok("modal mostra a lista de ferros", "posição" in pg.inner_text("#pranchaFerros").lower() and "80,372" in pg.inner_text("#pranchaFerros"), pg.inner_text("#pranchaFerros")[:90].replace("\n", " "))
     pg.evaluate("closePranchaModal()")
 
+    print("[Revisão do projeto]")
+    revisoes = api("listar_revisoes", obra=OBRA).get("revisoes", [])
+    ok("a revisão do arquivo (R1) ficou registrada na obra", len(revisoes) == 1 and revisoes[0]["revisao"] == "R1" and revisoes[0]["resumo"]["novas"] == 36, str([(r["revisao"], r["resumo"]) for r in revisoes]))
     print("[Exclusão total]")
     pg.evaluate("switchModule('projeto')"); pg.wait_for_timeout(500)
     urls = [lidas["PM.01"]["prancha_url"], lidas["PM.01"]["print_url"]]

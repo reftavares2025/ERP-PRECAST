@@ -276,7 +276,12 @@
       `;
     }).join('');
 
+    const avisoEngenharia = p.aviso_engenharia
+      ? `<div class="card" style="border:2px solid #f59e0b; background:#3b2a05;"><div style="font-weight:800; color:#fbbf24; margin-bottom:4px;">⚠️ AVISO DA ENGENHARIA</div><div style="font-size:13px; line-height:1.5;">${String(p.aviso_engenharia).replace(/[<>&]/g, c => ({'<': '&lt;', '>': '&gt;', '&': '&amp;'}[c]))}</div></div>`
+      : '';
+
     area.innerHTML = `
+      ${avisoEngenharia}
       <div class="card">
         <div class="card-title">${p.tag || p.codigo_peca}</div>
         <div class="card-sub">#${p.codigo_peca} — ${p.obra || ''}</div>

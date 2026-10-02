@@ -398,6 +398,9 @@ def _run_parse_job(job_id, target_path):
         obra = res.get('obra', {})
         pieces = res.get('pieces', [])
         resolved_dxf_path = res.get('resolved_dxf_path')
+        from precast_caminhos import revisao_do_arquivo
+        obra['arquivo'] = os.path.basename(target_path)
+        obra['revisao'] = revisao_do_arquivo(target_path)
 
         # Modelos BIM e relatórios (IFC, CSV...) não trazem selo de obra: o
         # código da obra vira o nome do arquivo, para as peças poderem ser gravadas.

@@ -747,7 +747,8 @@ def get_piece_for_scan(codigo):
             "peso_kg": doc.peso_kg, "fck": doc.fck,
             "prancha_url": doc.prancha_url, "print_url": doc.print_url, "folha_prancha": doc.get("folha_prancha"),
             "fase_numero": doc.fase_numero, "status_producao": doc.status_producao,
-            "forma_pista": doc.forma_pista, "data_programada": doc.data_programada
+            "forma_pista": doc.forma_pista, "data_programada": doc.data_programada,
+            "aviso_engenharia": doc.aviso_engenharia
         },
         "checklist": checklist
     }
@@ -2133,6 +2134,9 @@ def integrate_parsed_project(obra_data, pieces_data, modo="acrescentar"):
             o_doc.cidade_uf = cidade_uf
             o_doc.save(ignore_permissions=True)
 
+    from frappe.precast_revisoes import aplicar as _aplicar_revisao, comparar as _comparar_revisao
+    diferencas = _comparar_revisao(cod_obra, pieces_data)   # antes de a gravação trocar os dados das peças
+
     created_count = 0
     updated_count = 0
     gravados = set()  # códigos como ficaram no sistema (com o prefixo da obra quando outra obra já usa o código)
@@ -2237,16 +2241,39 @@ def integrate_parsed_project(obra_data, pieces_data, modo="acrescentar"):
             frappe.log_error(title="Falha ao gerar QR na importação", message=f"{p_cod}: {e}")
 
     removidas, mantidas = _sincronizar_pecas_da_obra(cod_obra, gravados, pieces_data) if modo == "substituir" else ([], [])
+    numero_revisao = _aplicar_revisao(cod_obra, obra_data.get('revisao'), obra_data.get('arquivo'), modo, diferencas)
     frappe.db.commit()
     return {
         "success": True,
         "obra": cod_obra,
+        "revisao": {"numero": numero_revisao, "nome": obra_data.get('revisao'), **diferencas["resumo"]},
         "pecas_removidas": removidas,
         "pecas_fora_do_desenho": mantidas,
         "created": created_count,
         "updated": updated_count,
         "total": len(pieces_data)
     }
+
+@endpoint()
+def comparar_revisao(obra_data, pieces_data):
+    """Mostra o que o desenho lido muda nas peças já gravadas da obra e o efeito na produção. Não grava nada."""
+    _exigir_papel("Produção", "Direção")
+    if isinstance(obra_data, str):
+        obra_data = json.loads(obra_data)
+    if isinstance(pieces_data, str):
+        pieces_data = json.loads(pieces_data)
+    cod_obra = (obra_data.get('cod') or '').strip()
+    if not cod_obra:
+        return {"success": False, "error": "Código da obra é obrigatório"}
+    from frappe.precast_revisoes import comparar
+    return {"success": True, "obra": cod_obra, "revisao": obra_data.get('revisao'), **comparar(cod_obra, pieces_data)}
+
+
+@endpoint()
+def listar_revisoes(obra):
+    from frappe.precast_revisoes import listar
+    return {"success": True, "obra": obra, "revisoes": listar(obra)}
+
 
 @endpoint()
 def create_obra(codigo_obra, nome_obra=None, cliente_nome=None, cidade_uf=None, fck_padrao=None, status="Em Fabricação"):
@@ -2387,6 +2414,8 @@ def delete_obra(codigo_obra):
         frappe.delete_doc('Peca Pre-Moldada', p.name, ignore_permissions=True, force=True)
         deleted_pieces += 1
         
+    for nome in frappe.get_all("Revisao Projeto", filters={"obra": codigo_obra}, pluck="name"):
+        frappe.delete_doc("Revisao Projeto", nome, ignore_permissions=True, force=True)
     frappe.defaults.clear_default(key=f"portal_cfg:{codigo_obra}", parent="__default")  # o que o cliente via e o link não passam para uma obra nova de mesmo código
     # 2. Delete the Obra document itself
     if frappe.db.exists('Obra', codigo_obra):

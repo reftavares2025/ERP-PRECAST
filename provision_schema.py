@@ -1216,6 +1216,22 @@ CERTIFICADO_ACO = {
     "permissions": _PERMISSOES_BASE,
 }
 
+REVISAO_PROJETO = {
+    "module": "Custom", "naming_rule": "Autoincrement", "autoname": None, "issingle": 0,
+    "fields": [
+        {"fieldname": "obra", "label": "Obra", "fieldtype": "Data", "reqd": 1, "in_list_view": 1},
+        {"fieldname": "numero", "label": "Número", "fieldtype": "Int", "in_list_view": 1},
+        {"fieldname": "revisao", "label": "Revisão", "fieldtype": "Data", "in_list_view": 1},
+        {"fieldname": "arquivo", "label": "Arquivo", "fieldtype": "Data"},
+        {"fieldname": "modo", "label": "Modo de gravação", "fieldtype": "Data"},
+        {"fieldname": "data_hora", "label": "Data e hora", "fieldtype": "Datetime"},
+        {"fieldname": "usuario", "label": "Quem gravou", "fieldtype": "Data"},
+        {"fieldname": "resumo", "label": "Resumo (JSON)", "fieldtype": "Long Text"},
+        {"fieldname": "diff", "label": "Diferenças (JSON)", "fieldtype": "Long Text"},
+    ],
+    "permissions": _PERMISSOES_BASE,
+}
+
 # Rastreabilidade de cada peça: de qual lote de concreto e de quais corridas de aço ela saiu.
 CAMPOS_PECA_RASTRO = [
     {"fieldname": "lote_concreto", "label": "Lote do concreto", "fieldtype": "Link", "options": "Lote Concreto"},
@@ -1254,6 +1270,7 @@ def garantir_doctypes_novos():
     _criar_doctype("Lote Concreto", LOTE_CONCRETO)
     _criar_doctype("Corpo Prova", CORPO_PROVA)
     _criar_doctype("Certificado Aco", CERTIFICADO_ACO)
+    _criar_doctype("Revisao Projeto", REVISAO_PROJETO)
     garantir_campos_peca()
     frappe.db.commit()
     frappe.clear_cache()
